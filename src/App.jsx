@@ -18,7 +18,7 @@ function App() {
         setSelectedCategory={setCategory}
       />
 
-      <TimerCard />
+      <TimerCard category={category} />
 
     </div>
   )
