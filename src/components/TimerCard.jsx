@@ -25,7 +25,9 @@ function TimerCard({ category }) {
         duration: seconds
       }
 
-      await addSession(session)
+    await addSession(session)
+
+    reset()
 
       console.log("Saved:", session)
     }

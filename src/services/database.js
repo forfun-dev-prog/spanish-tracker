@@ -19,6 +19,11 @@ export async function getSessions() {
 }
 
 
+export async function updateSession(id, changes) {
+  await db.sessions.update(id, changes)
+}
+
+
 export async function deleteSession(id) {
   await db.sessions.delete(id)
 }
