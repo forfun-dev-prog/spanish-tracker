@@ -1,19 +1,18 @@
 import { useState, useEffect } from "react"
 import categories from "../data/defaultCategories"
 
-
-// Converts an ISO date string (or nothing, meaning "now") into the
-// yyyy-MM-ddThh:mm format that <input type="datetime-local"> expects.
+// Converts an ISO date string (or now) into the localized yyyy-MM-ddThh:mm format 
+// without incurring UTC/local shifts.
 function toDatetimeLocalValue(isoString) {
   const d = isoString ? new Date(isoString) : new Date()
-  const pad = (n) => String(n).padStart(2, "0")
-
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  
+  // Offset the date milliseconds to align UTC conversion safely to Local time
+  const tzOffset = d.getTimezoneOffset() * 60000
+  const localISOTime = new Date(d.getTime() - tzOffset).toISOString()
+  
+  return localISOTime.slice(0, 16) // Returns "YYYY-MM-DDTHH:mm"
 }
 
-
-// Used for both creating a new session and editing an existing one.
-// Pass a `session` object to edit it, or omit it to create a new one.
 function SessionForm({ session, onSave, onCancel }) {
   const isEditing = Boolean(session)
 
@@ -24,7 +23,6 @@ function SessionForm({ session, onSave, onCancel }) {
   )
   const [error, setError] = useState("")
 
-  // Keep the form in sync if the caller swaps which session is being edited
   useEffect(() => {
     setCategory(session?.category || categories[0])
     setDateValue(toDatetimeLocalValue(session?.date))
@@ -98,7 +96,7 @@ function SessionForm({ session, onSave, onCancel }) {
         </label>
       </div>
 
-      {error && <p>{error}</p>}
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <button type="submit">{isEditing ? "Save changes" : "Add session"}</button>{" "}
       <button type="button" onClick={onCancel}>

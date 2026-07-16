@@ -1,19 +1,16 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
 import { addSession, updateSession, deleteSession } from "../services/database"
 
-
 function History() {
-
-  const { sessions, refreshSessions } = useSessions()
-
-  // null = closed, "add" = creating a new session, a session object = editing that session
+  const { sessions } = useSessions()
   const [formTarget, setFormTarget] = useState(null)
 
-  const sorted = [...sessions].sort(
-    (a, b) => new Date(b.date) - new Date(a.date)
-  )
+  // useMemo prevents heavy resort computations on unrelated visual updates
+  const sorted = useMemo(() => {
+    return [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date))
+  }, [sessions])
 
   async function handleSave(payload) {
     if (payload.id) {
@@ -22,9 +19,7 @@ function History() {
     } else {
       await addSession(payload)
     }
-
     setFormTarget(null)
-    refreshSessions()
   }
 
   async function handleDelete(id) {
@@ -32,12 +27,10 @@ function History() {
     if (!confirmed) return
 
     await deleteSession(id)
-    refreshSessions()
   }
 
   return (
     <div>
-
       <h1>📚 Study History</h1>
 
       {formTarget && (
@@ -61,15 +54,12 @@ function History() {
       )}
 
       {sorted.map((session) => (
-
         <div key={session.id}>
-
-          <h3>
-            {session.category}
-          </h3>
-
+          <h3>{session.category}</h3>
+          
           <p>
-            {Math.round(session.duration / 60)} min
+            {/* Using Math.ceil so short sessions do not round down to 0 min */}
+            {Math.ceil(session.duration / 60)} min
           </p>
 
           <p>
@@ -83,16 +73,11 @@ function History() {
           <button onClick={() => handleDelete(session.id)}>
             Delete
           </button>
-
           <hr />
-
         </div>
-
       ))}
-
     </div>
   )
 }
-
 
 export default History

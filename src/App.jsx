@@ -4,6 +4,7 @@ import { useState } from "react"
 import TimerCard from "./components/TimerCard"
 import CategorySelector from "./components/CategorySelector"
 import History from "./pages/History"
+import Stats from "./pages/Stats"
 
 
 function Dashboard() {
@@ -49,6 +50,12 @@ function App() {
           History
         </Link>
 
+        {" | "}
+
+        <Link to="/stats">
+          Stats
+        </Link>
+
       </nav>
 
 
@@ -62,6 +69,11 @@ function App() {
         <Route 
           path="/history" 
           element={<History />}
+        />
+
+        <Route
+          path="/stats"
+          element={<Stats />}
         />
 
       </Routes>

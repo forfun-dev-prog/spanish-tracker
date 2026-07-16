@@ -1,28 +1,20 @@
-import { useEffect, useState } from "react"
-import { getSessions } from "../services/database"
-
+// useSessions.js
+import { useLiveQuery } from "dexie-react-hooks"
+import db from "../services/database"
 
 function useSessions() {
-
-  const [sessions, setSessions] = useState([])
-
-
-  async function loadSessions() {
-    const data = await getSessions()
-    setSessions(data)
-  }
-
-
-  useEffect(() => {
-    loadSessions()
-  }, [])
-
+  // useLiveQuery automatically observes Dexie changes and forces a re-render
+  const sessions = useLiveQuery(
+    async () => {
+      return await db.sessions.toArray()
+    },
+    [] // dependency array (similar to useEffect)
+  )
 
   return {
-    sessions,
-    refreshSessions: loadSessions
+    // If the database is still opening/querying, default to an empty array
+    sessions: sessions || []
   }
 }
-
 
 export default useSessions

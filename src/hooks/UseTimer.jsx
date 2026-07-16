@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 
 function useTimer() {
   const [seconds, setSeconds] = useState(0)
@@ -16,18 +16,19 @@ function useTimer() {
     return () => clearInterval(interval)
   }, [running])
 
-  function start() {
+  // Memoizing these functions prevents unnecessary re-renders in components using this hook
+  const start = useCallback(() => {
     setRunning(true)
-  }
+  }, [])
 
-  function stop() {
+  const stop = useCallback(() => {
     setRunning(false)
-  }
+  }, [])
 
-  function reset() {
+  const reset = useCallback(() => {
     setSeconds(0)
     setRunning(false)
-  }
+  }, [])
 
   return {
     seconds,
