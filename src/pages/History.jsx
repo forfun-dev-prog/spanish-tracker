@@ -1,81 +1,243 @@
-import { useState, useMemo } from "react"
+// src/pages/History.jsx
+import { useState, useEffect } from "react"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
-import { addSession, updateSession, deleteSession } from "../services/database"
+import { useReward } from "../components/RewardCelebration"
+
+// Lightweight themed modal: closes on backdrop click or Escape.
+function Modal({ children, onClose }) {
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === "Escape") onClose()
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [onClose])
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        zIndex: 50,
+        background: "rgba(3, 0, 12, 0.7)",
+        backdropFilter: "blur(4px)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        padding: 20,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: "100%",
+          maxWidth: 420,
+          background: "radial-gradient(circle, #1a103c 0%, #090514 100%)",
+          color: "#f8fafc",
+          border: "1px solid rgba(255,255,255,0.08)",
+          borderRadius: 20,
+          padding: 24,
+          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.85)",
+        }}
+      >
+        {children}
+      </div>
+    </div>
+  )
+}
 
 function History() {
-  const { sessions } = useSessions()
-  const [formTarget, setFormTarget] = useState(null)
+  const { sessions, addSession, updateSession, deleteSession } = useSessions()
+  const celebrate = useReward()
 
-  // useMemo prevents heavy resort computations on unrelated visual updates
-  const sorted = useMemo(() => {
-    return [...sessions].sort((a, b) => new Date(b.date) - new Date(a.date))
-  }, [sessions])
+  const [editingSession, setEditingSession] = useState(null)
+  const [isFormOpen, setIsFormOpen] = useState(false)
 
-  async function handleSave(payload) {
-    if (payload.id) {
-      const { id, ...changes } = payload
-      await updateSession(id, changes)
-    } else {
-      await addSession(payload)
-    }
-    setFormTarget(null)
+  const openAdd = () => {
+    setEditingSession(null)
+    setIsFormOpen(true)
   }
 
-  async function handleDelete(id) {
-    const confirmed = window.confirm("Delete this session? This can't be undone.")
-    if (!confirmed) return
+  const openEdit = (session) => {
+    setEditingSession(session)
+    setIsFormOpen(true)
+  }
 
-    await deleteSession(id)
+  const closeForm = () => {
+    setIsFormOpen(false)
+    setEditingSession(null)
+  }
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Delete this session? This can't be undone.")) {
+      await deleteSession(id)
+    }
+  }
+
+  const handleSave = async (data) => {
+    if (data.id) {
+      const { id, ...changes } = data
+      await updateSession(id, changes) // editing does not award tokens
+    } else {
+      const result = await addSession(data)
+      if (result && result.tokensEarned > 0) {
+        celebrate({
+          title: `+${result.tokensEarned} Spin Token${result.tokensEarned > 1 ? "s" : ""}`,
+          subtitle: result.message,
+        })
+      }
+    }
+    closeForm()
+  }
+
+  const formatMinutes = (seconds) => Math.round(seconds / 60)
+
+  const formatDate = (isoString) => {
+    const d = new Date(isoString)
+    return d.toLocaleDateString("en-US", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    })
+  }
+
+  const getActivityColor = (category) => {
+    const colors = {
+      Listening: "#06b6d4",
+      Speaking: "#22c55e",
+      Reading: "#eab308",
+      Writing: "#f43f5e",
+      Grammar: "#a855f7",
+      Vocabulary: "#ec4899",
+    }
+    return colors[category] || "#6366f1"
   }
 
   return (
-    <div>
-      <h1>📚 Study History</h1>
-
-      {formTarget && (
-        <SessionForm
-          session={formTarget === "add" ? undefined : formTarget}
-          onSave={handleSave}
-          onCancel={() => setFormTarget(null)}
-        />
-      )}
-
-      {!formTarget && (
-        <button onClick={() => setFormTarget("add")}>
-          + Add session
-        </button>
-      )}
-
-      <hr />
-
-      {sorted.length === 0 && (
-        <p>No sessions yet</p>
-      )}
-
-      {sorted.map((session) => (
-        <div key={session.id}>
-          <h3>{session.category}</h3>
-          
-          <p>
-            {/* Using Math.ceil so short sessions do not round down to 0 min */}
-            {Math.ceil(session.duration / 60)} min
-          </p>
-
-          <p>
-            {new Date(session.date).toLocaleString()}
-          </p>
-
-          <button onClick={() => setFormTarget(session)}>
-            Edit
-          </button>{" "}
-
-          <button onClick={() => handleDelete(session.id)}>
-            Delete
-          </button>
-          <hr />
+    <div
+      style={{
+        maxWidth: "550px",
+        margin: "20px auto",
+        padding: "24px",
+        background: "radial-gradient(circle, #1a103c 0%, #090514 100%)",
+        color: "#f8fafc",
+        borderRadius: "28px",
+        boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(139, 92, 246, 0.15)",
+      }}
+    >
+      {/* Header */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+        <div>
+          <h2 style={{ fontSize: "26px", fontWeight: "900", margin: "0", color: "#ffffff" }}>📚 Study History</h2>
+          <span style={{ fontSize: "13px", color: "#a5b4fc" }}>
+            Total: {sessions.length} {sessions.length === 1 ? "session logged" : "sessions logged"}
+          </span>
         </div>
-      ))}
+        <button
+          onClick={openAdd}
+          style={{
+            padding: "10px 16px",
+            fontSize: "13px",
+            fontWeight: "800",
+            backgroundColor: "#fbbf24",
+            color: "#0f172a",
+            border: "none",
+            borderRadius: "12px",
+            cursor: "pointer",
+            boxShadow: "0 4px 14px rgba(251,191,36,0.3)",
+            textTransform: "uppercase",
+          }}
+        >
+          + Session
+        </button>
+      </div>
+
+      <hr style={{ borderColor: "rgba(255,255,255,0.06)", marginBottom: "20px" }} />
+
+      {/* Session list */}
+      <div style={{ display: "flex", flexDirection: "column", gap: "14px", maxHeight: "500px", overflowY: "auto", paddingRight: "4px" }}>
+        {sessions.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>
+            No logged items found yet. Start hitting the timers!
+          </p>
+        ) : (
+          sessions.map((session) => {
+            const accentColor = getActivityColor(session.category)
+            return (
+              <div
+                key={session.id}
+                style={{
+                  background: "rgba(255,255,255,0.03)",
+                  border: "1px solid rgba(255,255,255,0.05)",
+                  borderLeft: `5px solid ${accentColor}`,
+                  borderRadius: "16px",
+                  padding: "16px 18px",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  boxShadow: "0 4px 6px -1px rgba(0, 0, 0, 0.2)",
+                  transition: "transform 0.2s",
+                }}
+              >
+                <div>
+                  <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
+                    {session.category}
+                  </h4>
+                  <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#94a3b8" }}>
+                    <span style={{ color: accentColor, fontWeight: "700" }}>⏱️ {formatMinutes(session.duration)} min</span>
+                    <span>•</span>
+                    <span>📅 {formatDate(session.date)}</span>
+                  </div>
+                </div>
+
+                <div style={{ display: "flex", gap: "6px" }}>
+                  <button
+                    onClick={() => openEdit(session)}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      backgroundColor: "rgba(255,255,255,0.06)",
+                      color: "#cbd5e1",
+                      border: "none",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Edit
+                  </button>
+                  <button
+                    onClick={() => handleDelete(session.id)}
+                    style={{
+                      padding: "6px 12px",
+                      fontSize: "12px",
+                      fontWeight: "700",
+                      backgroundColor: "rgba(239,68,68,0.1)",
+                      color: "#f87171",
+                      border: "1px solid rgba(239,68,68,0.2)",
+                      borderRadius: "8px",
+                      cursor: "pointer",
+                    }}
+                  >
+                    Delete
+                  </button>
+                </div>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Add / Edit modal */}
+      {isFormOpen && (
+        <Modal onClose={closeForm}>
+          <SessionForm session={editingSession} onSave={handleSave} onCancel={closeForm} />
+        </Modal>
+      )}
     </div>
   )
 }

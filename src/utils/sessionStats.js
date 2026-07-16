@@ -6,7 +6,6 @@ function toDateKey(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-
 // Returns a Map keyed by "yyyy-MM-dd" (local time) -> total minutes
 // studied that day, across all categories combined.
 export function getDailyTotals(sessions) {
@@ -21,7 +20,6 @@ export function getDailyTotals(sessions) {
   return totals
 }
 
-
 // Returns an array of { date: "yyyy-MM-dd", minutes } covering the last
 // `days` days (inclusive of today), in chronological order. Days with
 // no sessions are included with minutes: 0, so the series has no gaps.
@@ -30,7 +28,8 @@ export function getDailySeries(sessions, days = 84) {
   const series = []
 
   const today = new Date()
-  today.setHours(0, 0, 0, 0)
+  // Setting the clock to local noon absorbs any 1-hour DST offset shifts
+  today.setHours(12, 0, 0, 0)
 
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(today)

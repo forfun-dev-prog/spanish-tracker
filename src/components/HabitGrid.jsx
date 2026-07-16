@@ -4,7 +4,6 @@ const WEEKS = 12
 const DAY_SIZE = 12
 const DAY_GAP = 3
 
-
 function colorForMinutes(minutes) {
   if (minutes <= 0) return "#ebedf0"
   if (minutes < 15) return "#c6e48b"
@@ -13,19 +12,24 @@ function colorForMinutes(minutes) {
   return "#196127"
 }
 
-
-// A GitHub-style contribution grid: one column per week, one row per
-// weekday, colored by how many minutes were studied that day.
 function HabitGrid({ sessions }) {
   const totalDays = WEEKS * 7
   const series = getDailySeries(sessions, totalDays)
 
   // Pad the front of the series so the grid always starts on a Sunday,
-  // which keeps the weekday rows aligned like a real calendar.
+  // keeping the weekday rows aligned like a real calendar.
   const firstDate = new Date(series[0].date)
   const leadingBlanks = firstDate.getDay()
 
-  const cells = [...Array(leadingBlanks).fill(null), ...series]
+  const initialCells = [...Array(leadingBlanks).fill(null), ...series]
+
+  // Pad the trailing end of cells so the final week always has 7 spots.
+  // This keeps column flexboxes looking perfectly aligned.
+  const totalCellsNeeded = Math.ceil(initialCells.length / 7) * 7
+  const cells = [
+    ...initialCells,
+    ...Array(totalCellsNeeded - initialCells.length).fill(null)
+  ]
 
   const weeks = []
   for (let i = 0; i < cells.length; i += 7) {
