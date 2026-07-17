@@ -7,6 +7,7 @@ import CategorySelector from "./components/CategorySelector"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
 import Shop from "./pages/Shop"
+import Achievements from "./pages/Achievements"
 import RewardWheel from "./components/RewardWheel"
 import { RewardProvider } from "./components/RewardCelebration"
 import useSessions from "./hooks/useSessions"
@@ -60,6 +61,7 @@ function PremiumNavBar() {
       <Link to="/" style={getLinkStyle("/")}>Home</Link>
       <Link to="/history" style={getLinkStyle("/history")}>History</Link>
       <Link to="/stats" style={getLinkStyle("/stats")}>Stats</Link>
+      <Link to="/achievements" style={getLinkStyle("/achievements")}>🏆 Badges</Link>
       <Link to="/shop" style={getLinkStyle("/shop")}>🧸 Shop</Link>
       <Link to="/casino" style={getLinkStyle("/casino", true)}>🎰 Casino</Link>
     </nav>
@@ -127,6 +129,7 @@ function App() {
           <Route path="/" element={<Dashboard />} />
           <Route path="/history" element={<History />} />
           <Route path="/stats" element={<Stats />} />
+          <Route path="/achievements" element={<Achievements />} />
           <Route path="/shop" element={<Shop />} />
           <Route path="/casino" element={<RewardWheel />} />
         </Routes>

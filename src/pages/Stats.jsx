@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import useSessions from "../hooks/useSessions";
+import { computeStreaks } from "../utils/streaks";
 
 const ACTIVITY_COLORS = {
   Listening: "#06b6d4",
@@ -178,6 +179,9 @@ function Stats() {
     sessions.forEach((s) => set.add(new Date(s.date).toDateString()));
     return set;
   }, [sessions]);
+
+  // --- Streaks are lifetime by nature (not scoped), shared with Achievements ---
+  const { currentStreak, longestStreak } = useMemo(() => computeStreaks(sessions), [sessions]);
 
   // --- Scoped analytics: totals, per-day min/max/avg, category breakdown, chart buckets ---
   const analytics = useMemo(() => {
@@ -378,6 +382,9 @@ function Stats() {
           <StatCard label="Daily avg" value={analytics.activeDays ? `${fmtHours(analytics.avgMinutes)}h` : "—"} sub="per active day" />
           <StatCard label="Peak day" value={maxDay ? `${fmtHours(maxDay.minutes)}h` : "—"} sub={maxDay ? fmtShortDate(maxDay.key) : "—"} />
           <StatCard label="Quietest day" value={minDay ? `${fmtHours(minDay.minutes)}h` : "—"} sub={minDay ? fmtShortDate(minDay.key) : "—"} />
+          {/* Streaks are lifetime, so they stay constant across the scope selector above */}
+          <StatCard label="Current streak" value={`${currentStreak}d`} sub={currentStreak > 0 ? "keep it going!" : "start today!"} />
+          <StatCard label="Longest streak" value={`${longestStreak}d`} sub="personal best" />
         </div>
       </div>
 
