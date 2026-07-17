@@ -3,6 +3,7 @@ import { useState, useEffect } from "react"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
 import { useReward } from "../components/RewardCelebration"
+import { getDifficultyMeta } from "../components/OptionalSessionDetails"
 
 // Lightweight themed modal: closes on backdrop click or Escape.
 function Modal({ children, onClose }) {
@@ -167,6 +168,7 @@ function History() {
         ) : (
           sessions.map((session) => {
             const accentColor = getActivityColor(session.category)
+            const difficultyMeta = getDifficultyMeta(session.difficulty)
             return (
               <div
                 key={session.id}
@@ -183,18 +185,39 @@ function History() {
                   transition: "transform 0.2s",
                 }}
               >
-                <div>
+                <div style={{ minWidth: 0 }}>
                   <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
                     {session.category}
                   </h4>
-                  <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#94a3b8" }}>
+                  <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#94a3b8", flexWrap: "wrap" }}>
                     <span style={{ color: accentColor, fontWeight: "700" }}>⏱️ {formatMinutes(session.duration)} min</span>
                     <span>•</span>
                     <span>📅 {formatDate(session.date)}</span>
+                    {difficultyMeta && (
+                      <span title={difficultyMeta.label}>
+                        {difficultyMeta.emoji} {difficultyMeta.label}
+                      </span>
+                    )}
                   </div>
+                  {session.details && (
+                    <div
+                      style={{
+                        marginTop: 6,
+                        fontSize: 12,
+                        color: "#a5b4fc",
+                        fontStyle: "italic",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                      }}
+                      title={session.details}
+                    >
+                      “{session.details}”
+                    </div>
+                  )}
                 </div>
 
-                <div style={{ display: "flex", gap: "6px" }}>
+                <div style={{ display: "flex", gap: "6px", flexShrink: 0 }}>
                   <button
                     onClick={() => openEdit(session)}
                     style={{
