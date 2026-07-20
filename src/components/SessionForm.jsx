@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import categories from "../data/defaultCategories"
 import OptionalSessionDetails from "./OptionalSessionDetails"
+import LanguageSwitcher from "./LanguageSwitcher"
+import useLanguage from "../hooks/useLanguage"
 
 // Converts an ISO date string (or now) into the localized yyyy-MM-ddThh:mm format
 // without incurring UTC/local shifts.
@@ -67,12 +69,16 @@ function Field({ label, children }) {
 
 function SessionForm({ session, onSave, onCancel }) {
   const isEditing = Boolean(session)
+  const { currentLanguage } = useLanguage()
 
   const [category, setCategory] = useState(session?.category || categories[0])
   const [dateValue, setDateValue] = useState(toDatetimeLocalValue(session?.date))
   const [minutes, setMinutes] = useState(
     session ? String(Math.round(session.duration / 60)) : ""
   )
+  // null means "not overridden yet" — falls back to the session's own
+  // language when editing, or today's active language when adding.
+  const [languageCode, setLanguageCode] = useState(session?.language || null)
   const [details, setDetails] = useState(session?.details || "")
   const [difficulty, setDifficulty] = useState(session?.difficulty || null)
   const [error, setError] = useState("")
@@ -81,10 +87,13 @@ function SessionForm({ session, onSave, onCancel }) {
     setCategory(session?.category || categories[0])
     setDateValue(toDatetimeLocalValue(session?.date))
     setMinutes(session ? String(Math.round(session.duration / 60)) : "")
+    setLanguageCode(session?.language || null)
     setDetails(session?.details || "")
     setDifficulty(session?.difficulty || null)
     setError("")
   }, [session])
+
+  const effectiveLanguageCode = languageCode || currentLanguage.code
 
   function handleSubmit(e) {
     e.preventDefault()
@@ -103,6 +112,7 @@ function SessionForm({ session, onSave, onCancel }) {
       category,
       date: new Date(dateValue).toISOString(),
       duration: Math.round(parsedMinutes * 60),
+      language: effectiveLanguageCode,
       details: details.trim() || null,
       difficulty: difficulty || null,
     }
@@ -131,6 +141,10 @@ function SessionForm({ session, onSave, onCancel }) {
       >
         {isEditing ? "Edit session" : "Add session"}
       </h3>
+
+      <Field label="Language">
+        <LanguageSwitcher value={effectiveLanguageCode} onChange={setLanguageCode} />
+      </Field>
 
       <Field label="Activity">
         <select

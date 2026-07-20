@@ -3,10 +3,12 @@ import { useState } from "react"
 import useTimer from "../hooks/useTimer"
 import { useReward } from "./RewardCelebration"
 import OptionalSessionDetails from "./OptionalSessionDetails"
+import useLanguage from "../hooks/useLanguage"
 
 function TimerCard({ category, onSaveSession }) {
   const { seconds, running, start, stop, reset } = useTimer()
   const celebrate = useReward()
+  const { currentLanguage } = useLanguage()
 
   const [details, setDetails] = useState("")
   const [difficulty, setDifficulty] = useState(null)
@@ -26,6 +28,9 @@ function TimerCard({ category, onSaveSession }) {
         category: category,
         date: new Date().toISOString(),
         duration: seconds,
+        // Tagged with whichever language is currently active (shown in the
+        // switcher pill above) — no separate picker here, keeps quick-save fast.
+        language: currentLanguage.code,
         // Always included (as null when unset) so the record shape stays
         // consistent whether or not someone bothered to fill these in.
         details: details.trim() || null,
@@ -81,7 +86,7 @@ function TimerCard({ category, onSaveSession }) {
         {formatTime(seconds)}
       </div>
 
-      {/* Optional details — collapsed by default, doesn't slow down a quick Start/Save */}
+      {/* Optional details — always visible, still optional to fill in */}
       <div style={{ textAlign: "left", marginBottom: "8px" }}>
         <OptionalSessionDetails
           details={details}

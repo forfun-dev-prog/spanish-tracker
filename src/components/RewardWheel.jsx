@@ -69,7 +69,7 @@ function RewardWheel() {
       const prize = PRIZES[targetSliceIndex]
       
       await updateBalance("coins", coins + prize.value)
-      setWinningText(`🎉 ¡Excelente! You landed on +${prize.value} Coins!`)
+      setWinningText(`🎉 Amazing! You landed on +${prize.value} Coins!`)
 
       if (wheelRef.current) {
         wheelRef.current.style.transition = "none"
@@ -103,7 +103,7 @@ function RewardWheel() {
       boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.8), inset 0 0 40px rgba(139, 92, 246, 0.15)"
     }}>
       <h2 style={{ fontSize: "26px", fontWeight: "900", margin: "0 0 4px 0", letterSpacing: "1px", color: "#fef08a", textShadow: "0 0 10px rgba(234,179,8,0.3)" }}>
-        🎰 Casino de Recompensa
+        🎰 Reward Casino
       </h2>
       
       <div style={{ display: "flex", justifyContent: "space-around", marginBottom: "20px", background: "rgba(255,255,255,0.05)", padding: "10px", borderRadius: "14px" }}>

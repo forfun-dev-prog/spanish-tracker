@@ -6,6 +6,7 @@ import TimerCard from "./components/TimerCard"
 import CategorySelector from "./components/CategorySelector"
 import SessionForm from "./components/SessionForm"
 import Modal from "./components/Modal"
+import LanguageSwitcher from "./components/LanguageSwitcher"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
 import Shop from "./pages/Shop"
@@ -13,6 +14,7 @@ import Achievements from "./pages/Achievements"
 import RewardWheel from "./components/RewardWheel"
 import { RewardProvider, useReward } from "./components/RewardCelebration"
 import useSessions from "./hooks/useSessions"
+import useLanguage from "./hooks/useLanguage"
 
 // Styled Navigation Component to detect the active route
 function PremiumNavBar() {
@@ -74,6 +76,8 @@ function Dashboard() {
   const [category, setCategory] = useState("Listening")
   const [isAddOpen, setIsAddOpen] = useState(false)
 
+  const { currentLanguage } = useLanguage()
+
   // Token-aware session creator, shared by both the timer's Save button and
   // this page's manual "+ Add Session" button.
   const { addSession } = useSessions()
@@ -113,20 +117,26 @@ function Dashboard() {
           textShadow: "0px 4px 12px rgba(0,0,0,0.5)",
         }}
       >
-        <span style={{ marginRight: "10px" }}>🇪🇸</span>Spanish Tracker
+        <span style={{ marginRight: "10px" }}>{currentLanguage.flag}</span>Language Tracker
       </h1>
       <p
         style={{
           textAlign: "center",
           color: "#a5b4fc",
           fontSize: "14px",
-          margin: "0 0 24px 0",
+          margin: "0 0 20px 0",
           textTransform: "uppercase",
           letterSpacing: "1px",
         }}
       >
         Optimize your daily learning flow
       </p>
+
+      {/* Studying more than one language? Switch here — it's remembered for
+          next time, and the timer below tags every session with it. */}
+      <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
+        <LanguageSwitcher label="Studying" />
+      </div>
 
       {/* The two main actions of the app, both visible immediately:
           time a session live below, or log one manually right here. */}

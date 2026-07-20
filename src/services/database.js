@@ -1,7 +1,8 @@
 // src/services/database.js
 import Dexie from "dexie"
+import { DEFAULT_LANGUAGE_CODE } from "../data/languages"
 
-const db = new Dexie("SpanishTracker")
+const db = new Dexie("LanguageTracker")
 
 // Version 2 adds the 'metadata' store to remember tokens and wallet amounts
 db.version(2).stores({
@@ -137,11 +138,39 @@ export async function excludeSuggestion(category, detailText) {
   }
 }
 
+// --- Language Selection ---
+// The "current language" IS just the front of this list — no separate
+// pointer to keep in sync. Persisted, so it's remembered across reloads;
+// capped at 3 so polyglots get quick one-tap access to their recent set.
+export async function getRecentLanguageCodes() {
+  try {
+    const row = await db.metadata.get("recentLanguages")
+    return row?.value?.length ? row.value : [DEFAULT_LANGUAGE_CODE]
+  } catch (e) {
+    console.error("Error reading recent languages:", e)
+    return [DEFAULT_LANGUAGE_CODE]
+  }
+}
+
+// Moves `code` to the front of the recent-languages list (deduped), capped
+// at 3. Selecting a language always makes it "current" — that's the whole
+// mechanism behind "remembered."
+export async function selectLanguage(code) {
+  try {
+    const row = await db.metadata.get("recentLanguages")
+    const current = row?.value || []
+    const next = [code, ...current.filter((c) => c !== code)].slice(0, 3)
+    await db.metadata.put({ key: "recentLanguages", value: next })
+  } catch (e) {
+    console.error("Error selecting language:", e)
+  }
+}
+
 // --- DEV TOOL: Clear All Data ---
 // Wipes every session and every metadata entry (tokens, coins, owned bears,
-// suggestion exclusions — everything). No undo. Intended for pre-launch
-// testing only; remove the UI button for this once the app is actually
-// being used to track real study hours.
+// suggestion exclusions, recent languages — everything). No undo. Intended
+// for pre-launch testing only; remove the UI button for this once the app
+// is actually being used to track real study hours.
 export async function clearAllData() {
   try {
     await db.transaction("rw", db.sessions, db.metadata, async () => {
