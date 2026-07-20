@@ -107,4 +107,50 @@ export async function buyBear(bearId, price) {
   }
 }
 
+// --- Detail Suggestion Exclusions ---
+// "Hides" a specific details value from future suggestion chips/autocomplete
+// for a category (e.g. to fix a typo that keeps reappearing). This never
+// touches past session records — only what gets suggested going forward —
+// so History and any stats derived from existing sessions are unaffected.
+export async function getSuggestionExclusions(category) {
+  try {
+    const row = await db.metadata.get("suggestionExclusions")
+    const map = row?.value || {}
+    return map[category] || []
+  } catch (e) {
+    console.error("Error reading suggestion exclusions:", e)
+    return []
+  }
+}
+
+export async function excludeSuggestion(category, detailText) {
+  try {
+    const row = await db.metadata.get("suggestionExclusions")
+    const map = row?.value || {}
+    const normalized = detailText.trim().toLowerCase()
+    const set = new Set(map[category] || [])
+    set.add(normalized)
+    map[category] = Array.from(set)
+    await db.metadata.put({ key: "suggestionExclusions", value: map })
+  } catch (e) {
+    console.error("Error excluding suggestion:", e)
+  }
+}
+
+// --- DEV TOOL: Clear All Data ---
+// Wipes every session and every metadata entry (tokens, coins, owned bears,
+// suggestion exclusions — everything). No undo. Intended for pre-launch
+// testing only; remove the UI button for this once the app is actually
+// being used to track real study hours.
+export async function clearAllData() {
+  try {
+    await db.transaction("rw", db.sessions, db.metadata, async () => {
+      await db.sessions.clear()
+      await db.metadata.clear()
+    })
+  } catch (e) {
+    console.error("clearAllData failed:", e)
+  }
+}
+
 export default db

@@ -88,6 +88,7 @@ function TimerCard({ category, onSaveSession }) {
           setDetails={setDetails}
           difficulty={difficulty}
           setDifficulty={setDifficulty}
+          category={category}
         />
       </div>
 

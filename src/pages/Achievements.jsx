@@ -1,19 +1,9 @@
 import { useMemo, useState } from "react";
 import useSessions from "../hooks/useSessions";
 import { computeStreaks } from "../utils/streaks";
+import { CATEGORY_ICONS } from "../constants/activities";
 
-const CATEGORY_ICONS = {
-  Listening: "🎧",
-  Speaking: "🗣️",
-  Reading: "📖",
-  Writing: "✍️",
-  Grammar: "🧬",
-  Vocabulary: "🎴",
-  "TV Shows": "📺",
-  Podcasts: "🎙️",
-  Shadowing: "👥",
-  "AI Conversation": "🤖",
-};
+const TOTAL_CATEGORY_COUNT = Object.keys(CATEGORY_ICONS).length;
 
 export default function Achievements() {
   const { sessions } = useSessions();
@@ -128,7 +118,9 @@ export default function Achievements() {
       });
     });
 
-    // --- GROUP C: CATEGORY SPECIALISTS (10 Categories x 5 Tiers = 50 Badges) ---
+    // --- GROUP C: CATEGORY SPECIALISTS (9 Categories x 5 Tiers = 45 Badges) ---
+    // Fully dynamic against CATEGORY_ICONS, so this automatically tracks
+    // whatever categories currently exist — no separate list to keep in sync.
     const categories = Object.keys(CATEGORY_ICONS);
     const catTiers = [60, 300, 1200, 3000, 6000]; // 1hr, 5hrs, 20hrs, 50hrs, 100hrs
     const catTierTitles = ["Initiate", "Practitioner", "Devotee", "Master", "Monarch"];
@@ -150,6 +142,11 @@ export default function Achievements() {
     });
 
     // --- GROUP D: QUIRKY & ODDLY SPECIFIC CHALLENGES ---
+    // Note: "Podcast Castaway", "TV Enthusiast", and "AI Negotiator" were
+    // removed here — they checked for Podcasts / TV Shows / AI Conversation,
+    // which no longer exist as categories (folded into Listening / Watching /
+    // Speaking). Leaving them in would have made them permanently,
+    // silently unachievable rather than actually testing anything.
     const quirkyChallenges = [
       {
         id: "midnight_owl_1",
@@ -266,10 +263,13 @@ export default function Achievements() {
       {
         id: "category_explorer",
         title: "Jack of All Trades",
-        desc: "Log at least some time in all 10 available categories.",
+        // Threshold tracks however many categories actually exist, so this
+        // can't silently become impossible (or trivially easy) if the
+        // category list changes again in the future.
+        desc: `Log at least some time in all ${TOTAL_CATEGORY_COUNT} available categories.`,
         icon: "🗺️",
-        unlocked: stats.categoriesTriedCount >= 10,
-        progressText: `${stats.categoriesTriedCount}/10 categories tried`
+        unlocked: stats.categoriesTriedCount >= TOTAL_CATEGORY_COUNT,
+        progressText: `${stats.categoriesTriedCount}/${TOTAL_CATEGORY_COUNT} categories tried`
       },
       {
         id: "listening_biased",
@@ -282,10 +282,13 @@ export default function Achievements() {
       {
         id: "all_talk",
         title: "All Talk, No Action",
-        desc: "Log over 1,000 minutes of Speaking/AI Conversation but less than 10 minutes of Writing.",
+        // Previously summed Speaking + AI Conversation; AI Conversation no
+        // longer exists as a category (folded into Speaking), so this now
+        // just reads Speaking directly — same intent, one fewer category to track.
+        desc: "Log over 1,000 minutes of Speaking but less than 10 minutes of Writing.",
         icon: "📣",
-        unlocked: ((stats.categoryTotals["Speaking"] || 0) + (stats.categoryTotals["AI Conversation"] || 0)) >= 1000 && (stats.categoryTotals["Writing"] || 0) < 10,
-        progressText: `Oral: ${Math.round((stats.categoryTotals["Speaking"] || 0) + (stats.categoryTotals["AI Conversation"] || 0))}m, Write: ${Math.round(stats.categoryTotals["Writing"] || 0)}m`
+        unlocked: (stats.categoryTotals["Speaking"] || 0) >= 1000 && (stats.categoryTotals["Writing"] || 0) < 10,
+        progressText: `Speak: ${Math.round(stats.categoryTotals["Speaking"] || 0)}m, Write: ${Math.round(stats.categoryTotals["Writing"] || 0)}m`
       },
       {
         id: "bookworm",
@@ -296,12 +299,12 @@ export default function Achievements() {
         progressText: `${Math.round(stats.categoryTotals["Reading"] || 0)}/3000 mins`
       },
       {
-        id: "tv_enthusiast",
-        title: "TV Enthusiast",
-        desc: "Binge 3,000 minutes (50 hours) of TV Shows for \"research\".",
+        id: "screen_time",
+        title: "Screen Time Champion",
+        desc: "Watch 3,000 minutes (50 hours) of shows and films for \"research\".",
         icon: "📺",
-        unlocked: (stats.categoryTotals["TV Shows"] || 0) >= 3000,
-        progressText: `${Math.round(stats.categoryTotals["TV Shows"] || 0)}/3000 mins`
+        unlocked: (stats.categoryTotals["Watching"] || 0) >= 3000,
+        progressText: `${Math.round(stats.categoryTotals["Watching"] || 0)}/3000 mins`
       },
       {
         id: "monochrome",
@@ -324,14 +327,6 @@ export default function Achievements() {
           return (max - min) / max <= 0.10;
         })(),
         progressText: "Needs 3 categories ≥ 200m within a 10% delta"
-      },
-      {
-        id: "pod_castaway",
-        title: "Podcast Castaway",
-        desc: "Log more than 1,500 minutes of Podcasts.",
-        icon: "🏝️",
-        unlocked: (stats.categoryTotals["Podcasts"] || 0) >= 1500,
-        progressText: `${Math.round(stats.categoryTotals["Podcasts"] || 0)}/1500 mins`
       },
       {
         id: "shadow_clones",
@@ -358,12 +353,12 @@ export default function Achievements() {
         progressText: `${Math.round(stats.categoryTotals["Vocabulary"] || 0)}/1000 mins`
       },
       {
-        id: "cyborg_negotiator",
-        title: "AI Negotiator",
-        desc: "Converse with the Artificial Intelligence for 1,200 minutes.",
-        icon: "🦾",
-        unlocked: (stats.categoryTotals["AI Conversation"] || 0) >= 1200,
-        progressText: `${Math.round(stats.categoryTotals["AI Conversation"] || 0)}/1200 mins`
+        id: "read_it_loud",
+        title: "Town Crier",
+        desc: "Log 500 minutes of Reading Aloud practice.",
+        icon: "🗣️",
+        unlocked: (stats.categoryTotals["Reading Aloud"] || 0) >= 500,
+        progressText: `${Math.round(stats.categoryTotals["Reading Aloud"] || 0)}/500 mins`
       },
       {
         id: "speed_runner",

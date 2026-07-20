@@ -1,53 +1,12 @@
 // src/pages/History.jsx
-import { useState, useEffect } from "react"
+import { useState } from "react"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
+import Modal from "../components/Modal"
 import { useReward } from "../components/RewardCelebration"
 import { getDifficultyMeta } from "../components/OptionalSessionDetails"
-
-// Lightweight themed modal: closes on backdrop click or Escape.
-function Modal({ children, onClose }) {
-  useEffect(() => {
-    const onKey = (e) => {
-      if (e.key === "Escape") onClose()
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [onClose])
-
-  return (
-    <div
-      onClick={onClose}
-      style={{
-        position: "fixed",
-        inset: 0,
-        zIndex: 50,
-        background: "rgba(3, 0, 12, 0.7)",
-        backdropFilter: "blur(4px)",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        padding: 20,
-      }}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          width: "100%",
-          maxWidth: 420,
-          background: "radial-gradient(circle, #1a103c 0%, #090514 100%)",
-          color: "#f8fafc",
-          border: "1px solid rgba(255,255,255,0.08)",
-          borderRadius: 20,
-          padding: 24,
-          boxShadow: "0 25px 50px -12px rgba(0,0,0,0.85)",
-        }}
-      >
-        {children}
-      </div>
-    </div>
-  )
-}
+import { ACTIVITY_COLORS } from "../constants/activities"
+import { clearAllData } from "../services/database"
 
 function History() {
   const { sessions, addSession, updateSession, deleteSession } = useSessions()
@@ -93,6 +52,16 @@ function History() {
     closeForm()
   }
 
+  // Temporary dev tool — wipes sessions, tokens, coins, and owned bears.
+  // Remove this button once the app is being used to track real hours.
+  const handleClearAllData = async () => {
+    const confirmed = window.confirm(
+      "This permanently deletes ALL sessions, tokens, coins, and teddy bears. There is no undo. Continue?"
+    )
+    if (!confirmed) return
+    await clearAllData()
+  }
+
   const formatMinutes = (seconds) => Math.round(seconds / 60)
 
   const formatDate = (isoString) => {
@@ -106,17 +75,7 @@ function History() {
     })
   }
 
-  const getActivityColor = (category) => {
-    const colors = {
-      Listening: "#06b6d4",
-      Speaking: "#22c55e",
-      Reading: "#eab308",
-      Writing: "#f43f5e",
-      Grammar: "#a855f7",
-      Vocabulary: "#ec4899",
-    }
-    return colors[category] || "#6366f1"
-  }
+  const getActivityColor = (category) => ACTIVITY_COLORS[category] || "#6366f1"
 
   return (
     <div
@@ -253,6 +212,35 @@ function History() {
             )
           })
         )}
+      </div>
+
+      {/* --- TEMPORARY DEV TOOL — remove before real use --- */}
+      <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px dashed rgba(239,68,68,0.35)" }}>
+        <div style={{ fontSize: 11, fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10, textAlign: "center" }}>
+          ⚠️ Danger Zone — Dev Only
+        </div>
+        <button
+          onClick={handleClearAllData}
+          style={{
+            width: "100%",
+            padding: "12px 18px",
+            fontSize: "14px",
+            fontWeight: "800",
+            color: "#ffffff",
+            backgroundColor: "#dc2626",
+            border: "1px solid #ef4444",
+            borderRadius: "12px",
+            cursor: "pointer",
+            boxShadow: "0 6px 15px rgba(220,38,38,0.35)",
+            textTransform: "uppercase",
+            letterSpacing: "0.5px",
+          }}
+        >
+          🗑️ Clear All Data
+        </button>
+        <p style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center" }}>
+          Wipes every session, token, coin, and teddy bear. Remove this button before tracking real hours.
+        </p>
       </div>
 
       {/* Add / Edit modal */}

@@ -1,19 +1,7 @@
 import { useMemo, useState } from "react";
 import useSessions from "../hooks/useSessions";
 import { computeStreaks } from "../utils/streaks";
-
-const ACTIVITY_COLORS = {
-  Listening: "#06b6d4",
-  Speaking: "#22c55e",
-  Reading: "#eab308",
-  Writing: "#f43f5e",
-  Grammar: "#a855f7",
-  Vocabulary: "#ec4899",
-  "TV Shows": "#f97316",
-  Podcasts: "#3b82f6",
-  Shadowing: "#10b981",
-  "AI Conversation": "#84cc16",
-};
+import { ACTIVITY_COLORS } from "../constants/activities";
 
 const CATEGORIES = Object.keys(ACTIVITY_COLORS);
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];

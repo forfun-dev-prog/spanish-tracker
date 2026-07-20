@@ -1,14 +1,16 @@
-const defaultCategories = [
+// src/data/defaultCategories.js
+// Order shown in the Activity dropdown. Kept in the same order as the keys
+// in src/constants/activities.js so labels/colors/icons stay predictable.
+const categories = [
   "Listening",
-  "Speaking",
+  "Watching",
   "Reading",
+  "Reading Aloud",
+  "Speaking",
+  "Shadowing",
   "Writing",
   "Grammar",
   "Vocabulary",
-  "TV Shows",
-  "Podcasts",
-  "Shadowing",
-  "AI Conversation"
 ]
 
-export default defaultCategories
+export default categories

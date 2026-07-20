@@ -43,7 +43,9 @@ function Shop() {
   const handleBuy = async (bear) => {
     const result = await buyBear(bear.id, bear.price)
     if (result.ok) {
-      celebrate({ title: `${bear.emoji} ${bear.name} adopted!`, subtitle: "Added to your collection" })
+      // Bears no longer carry an `emoji` field (they render an SVG instead),
+      // so the celebration uses a fixed icon rather than a stale bear.emoji lookup.
+      celebrate({ title: `🧸 ${bear.name} adopted!`, subtitle: "Added to your collection" })
     }
   }
 
@@ -101,7 +103,7 @@ function Shop() {
                 opacity: isOwned || affordable ? 1 : 0.75,
               }}
             >
-              {/* Colored halo so each same-emoji bear reads as distinct */}
+              {/* Colored halo so each bear reads as distinct even before the SVG is drawn */}
               <div
                 style={{
                   width: 72,
@@ -115,7 +117,13 @@ function Shop() {
                   filter: isOwned ? "none" : "grayscale(.55)",
                 }}
               >
-                <span style={{ fontSize: 40, lineHeight: 1 }}><div dangerouslySetInnerHTML={{ __html: bear.svg }} className="w-8 h-8" /></span>
+                {/* Was wrapped in a <span>, which is invalid around a block-level <div>;
+                    the wrapper here also carries the actual pixel size instead of relying
+                    on the unapplied Tailwind classes ("w-8 h-8" does nothing without Tailwind set up). */}
+                <div
+                  dangerouslySetInnerHTML={{ __html: bear.svg }}
+                  style={{ width: 40, height: 40, lineHeight: 0 }}
+                />
               </div>
 
               <div style={{ fontSize: 11, fontWeight: 800, color: rarityColor, textTransform: "uppercase", letterSpacing: ".5px" }}>

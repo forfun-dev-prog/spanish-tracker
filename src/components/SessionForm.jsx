@@ -28,7 +28,6 @@ const labelStyle = {
 const fieldWrapStyle = { marginBottom: 18 }
 
 const inputBaseStyle = {
-  width: "100%",
   boxSizing: "border-box",
   padding: "11px 14px",
   fontSize: 15,
@@ -138,7 +137,7 @@ function SessionForm({ session, onSave, onCancel }) {
           value={category}
           onChange={(e) => setCategory(e.target.value)}
           {...categoryGlow.handlers}
-          style={{ ...inputBaseStyle, ...categoryGlow.style, cursor: "pointer" }}
+          style={{ ...inputBaseStyle, ...categoryGlow.style, width: "100%", cursor: "pointer" }}
         >
           {categories.map((c) => (
             <option key={c} value={c} style={{ background: "#1a103c", color: "#f8fafc" }}>
@@ -148,37 +147,47 @@ function SessionForm({ session, onSave, onCancel }) {
         </select>
       </Field>
 
-      <Field label="Date & time">
-        <input
-          type="datetime-local"
-          value={dateValue}
-          onChange={(e) => setDateValue(e.target.value)}
-          required
-          {...dateGlow.handlers}
-          style={{ ...inputBaseStyle, ...dateGlow.style }}
-        />
-      </Field>
+      {/* Date & Time and Duration share a row — Date gets more room since it
+          needs it; flex-wrap means they drop back to stacked if the modal
+          ever renders narrower than expected, instead of squeezing unreadably. */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
+        <div style={{ flex: "2 1 200px", minWidth: 0 }}>
+          <label style={labelStyle}>Date &amp; time</label>
+          <input
+            type="datetime-local"
+            value={dateValue}
+            onChange={(e) => setDateValue(e.target.value)}
+            required
+            {...dateGlow.handlers}
+            style={{ ...inputBaseStyle, ...dateGlow.style, width: "100%" }}
+          />
+        </div>
 
-      <Field label="Duration (minutes)">
-        <input
-          type="number"
-          min="1"
-          step="1"
-          placeholder="e.g. 25"
-          value={minutes}
-          onChange={(e) => setMinutes(e.target.value)}
-          required
-          {...minutesGlow.handlers}
-          style={{ ...inputBaseStyle, ...minutesGlow.style }}
-        />
-      </Field>
+        <div style={{ flex: "1 1 110px", minWidth: 0 }}>
+          <label style={labelStyle}>Duration</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <input
+              type="number"
+              min="1"
+              step="1"
+              placeholder="25"
+              value={minutes}
+              onChange={(e) => setMinutes(e.target.value)}
+              required
+              {...minutesGlow.handlers}
+              style={{ ...inputBaseStyle, ...minutesGlow.style, width: "100%", minWidth: 0, textAlign: "center" }}
+            />
+            <span style={{ fontSize: 13, color: "#94a3b8", fontWeight: 600, flexShrink: 0 }}>min</span>
+          </div>
+        </div>
+      </div>
 
       <OptionalSessionDetails
         details={details}
         setDetails={setDetails}
         difficulty={difficulty}
         setDifficulty={setDifficulty}
-        startOpen={Boolean(session?.details || session?.difficulty)}
+        category={category}
       />
 
       {error && (

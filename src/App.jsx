@@ -4,12 +4,14 @@ import { useState } from "react"
 
 import TimerCard from "./components/TimerCard"
 import CategorySelector from "./components/CategorySelector"
+import SessionForm from "./components/SessionForm"
+import Modal from "./components/Modal"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
 import Shop from "./pages/Shop"
 import Achievements from "./pages/Achievements"
 import RewardWheel from "./components/RewardWheel"
-import { RewardProvider } from "./components/RewardCelebration"
+import { RewardProvider, useReward } from "./components/RewardCelebration"
 import useSessions from "./hooks/useSessions"
 
 // Styled Navigation Component to detect the active route
@@ -70,10 +72,23 @@ function PremiumNavBar() {
 
 function Dashboard() {
   const [category, setCategory] = useState("Listening")
+  const [isAddOpen, setIsAddOpen] = useState(false)
 
-  // Token-aware session creator. Passing this into TimerCard is what makes the
-  // front-page timer persist a session AND award spin tokens.
+  // Token-aware session creator, shared by both the timer's Save button and
+  // this page's manual "+ Add Session" button.
   const { addSession } = useSessions()
+  const celebrate = useReward()
+
+  const handleManualSave = async (data) => {
+    const result = await addSession(data)
+    if (result && result.tokensEarned > 0) {
+      celebrate({
+        title: `+${result.tokensEarned} Spin Token${result.tokensEarned > 1 ? "s" : ""}`,
+        subtitle: result.message,
+      })
+    }
+    setIsAddOpen(false)
+  }
 
   return (
     <div
@@ -105,7 +120,7 @@ function Dashboard() {
           textAlign: "center",
           color: "#a5b4fc",
           fontSize: "14px",
-          margin: "0 0 28px 0",
+          margin: "0 0 24px 0",
           textTransform: "uppercase",
           letterSpacing: "1px",
         }}
@@ -113,8 +128,38 @@ function Dashboard() {
         Optimize your daily learning flow
       </p>
 
+      {/* The two main actions of the app, both visible immediately:
+          time a session live below, or log one manually right here. */}
+      <button
+        onClick={() => setIsAddOpen(true)}
+        style={{
+          display: "block",
+          width: "100%",
+          padding: "12px 18px",
+          marginBottom: "24px",
+          fontSize: "14px",
+          fontWeight: "800",
+          textTransform: "uppercase",
+          letterSpacing: "0.5px",
+          color: "#0f172a",
+          background: "#fbbf24",
+          border: "none",
+          borderRadius: "14px",
+          cursor: "pointer",
+          boxShadow: "0 6px 15px rgba(251,191,36,0.3)",
+        }}
+      >
+        + Add Session
+      </button>
+
       <CategorySelector selectedCategory={category} setSelectedCategory={setCategory} />
       <TimerCard category={category} onSaveSession={addSession} />
+
+      {isAddOpen && (
+        <Modal onClose={() => setIsAddOpen(false)}>
+          <SessionForm session={null} onSave={handleManualSave} onCancel={() => setIsAddOpen(false)} />
+        </Modal>
+      )}
     </div>
   )
 }
