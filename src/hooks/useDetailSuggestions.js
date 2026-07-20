@@ -5,9 +5,6 @@ import db, { excludeSuggestion } from "../services/database"
 import useSessions from "./useSessions"
 import { rankDetailSuggestions, filterSuggestions } from "../utils/detailSuggestions"
 
-// Ranked "what did you call this before" suggestions for a category, derived
-// entirely from the person's own session history. No predefined content
-// list, no new session fields — it grows richer the more they log.
 function useDetailSuggestions(category) {
   const { sessions } = useSessions()
 

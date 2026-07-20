@@ -9,10 +9,7 @@ import Modal from "./components/Modal"
 import LanguageSwitcher from "./components/LanguageSwitcher"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
-import Shop from "./pages/Shop"
 import Achievements from "./pages/Achievements"
-import RewardWheel from "./components/RewardWheel"
-import { RewardProvider, useReward } from "./components/RewardCelebration"
 import useSessions from "./hooks/useSessions"
 import useLanguage from "./hooks/useLanguage"
 
@@ -66,8 +63,6 @@ function PremiumNavBar() {
       <Link to="/history" style={getLinkStyle("/history")}>History</Link>
       <Link to="/stats" style={getLinkStyle("/stats")}>Stats</Link>
       <Link to="/achievements" style={getLinkStyle("/achievements")}>🏆 Badges</Link>
-      <Link to="/shop" style={getLinkStyle("/shop")}>🧸 Shop</Link>
-      <Link to="/casino" style={getLinkStyle("/casino", true)}>🎰 Casino</Link>
     </nav>
   )
 }
@@ -185,8 +180,6 @@ function App() {
           <Route path="/history" element={<History />} />
           <Route path="/stats" element={<Stats />} />
           <Route path="/achievements" element={<Achievements />} />
-          <Route path="/shop" element={<Shop />} />
-          <Route path="/casino" element={<RewardWheel />} />
         </Routes>
       </BrowserRouter>
     </RewardProvider>

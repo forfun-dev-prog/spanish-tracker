@@ -1,13 +1,11 @@
 // src/components/TimerCard.jsx
 import { useState } from "react"
 import useTimer from "../hooks/useTimer"
-import { useReward } from "./RewardCelebration"
 import OptionalSessionDetails from "./OptionalSessionDetails"
 import useLanguage from "../hooks/useLanguage"
 
 function TimerCard({ category, onSaveSession }) {
   const { seconds, running, start, stop, reset } = useTimer()
-  const celebrate = useReward()
   const { currentLanguage } = useLanguage()
 
   const [details, setDetails] = useState("")
@@ -24,25 +22,14 @@ function TimerCard({ category, onSaveSession }) {
     stop()
 
     if (onSaveSession) {
-      const result = await onSaveSession({
+      await onSaveSession({
         category: category,
         date: new Date().toISOString(),
         duration: seconds,
-        // Tagged with whichever language is currently active (shown in the
-        // switcher pill above) — no separate picker here, keeps quick-save fast.
         language: currentLanguage.code,
-        // Always included (as null when unset) so the record shape stays
-        // consistent whether or not someone bothered to fill these in.
         details: details.trim() || null,
         difficulty: difficulty || null,
       })
-
-      if (result && result.tokensEarned > 0) {
-        celebrate({
-          title: `+${result.tokensEarned} Spin Token${result.tokensEarned > 1 ? "s" : ""}`,
-          subtitle: result.message,
-        })
-      }
     }
 
     reset()
@@ -55,7 +42,7 @@ function TimerCard({ category, onSaveSession }) {
       background: "rgba(15, 10, 30, 0.6)",
       border: "2px solid #312e81",
       borderRadius: "24px",
-      padding: "24px 20px 32px 20px", // Adjusted top padding
+      padding: "24px 20px 32px 20px",
       boxShadow: "inset 0 0 20px rgba(0, 0, 0, 0.6), 0 10px 20px rgba(0, 0, 0, 0.45)",
       textAlign: "center"
     }}>
@@ -86,7 +73,6 @@ function TimerCard({ category, onSaveSession }) {
         {formatTime(seconds)}
       </div>
 
-      {/* Optional details — always visible, still optional to fill in */}
       <div style={{ textAlign: "left", marginBottom: "8px" }}>
         <OptionalSessionDetails
           details={details}

@@ -1,27 +1,24 @@
-// src/components/CategorySelector.jsx
 import categories from "../data/defaultCategories"
 
 function CategorySelector({ selectedCategory, setSelectedCategory }) {
   return (
     <div style={{ marginBottom: "32px" }}>
-      {/* Visual Header Label */}
-      <span style={{ 
-        display: "block", 
-        fontSize: "12px", 
-        color: "#a5b4fc", 
-        textTransform: "uppercase", 
-        letterSpacing: "1px", 
+      <span style={{
+        display: "block",
+        fontSize: "12px",
+        color: "#a5b4fc",
+        textTransform: "uppercase",
+        letterSpacing: "1px",
         marginBottom: "12px",
         textAlign: "center"
       }}>
         Select Study Activity
       </span>
 
-      {/* Button Tray Container */}
-      <div style={{ 
-        display: "flex", 
-        flexWrap: "wrap", 
-        gap: "8px", 
+      <div style={{
+        display: "flex",
+        flexWrap: "wrap",
+        gap: "8px",
         justifyContent: "center",
         background: "rgba(255, 255, 255, 0.03)",
         padding: "12px",

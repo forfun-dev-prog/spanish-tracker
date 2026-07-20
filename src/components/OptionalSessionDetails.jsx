@@ -2,8 +2,6 @@
 import { useState, useEffect, useRef } from "react"
 import useDetailSuggestions from "../hooks/useDetailSuggestions"
 
-// Exported so History (and later Stats/Achievements) can render the same
-// emoji + label for a stored difficulty value without redefining the scale.
 export const DIFFICULTY_LEVELS = [
   { value: 1, emoji: "😌", label: "Very Easy" },
   { value: 2, emoji: "🙂", label: "Easy" },
@@ -16,9 +14,6 @@ export function getDifficultyMeta(value) {
   return DIFFICULTY_LEVELS.find((l) => l.value === value) || null
 }
 
-// Always visible now — nothing here is required to save a session, but it
-// no longer hides behind a toggle. `category` scopes the suggestion chips
-// and autocomplete so "Radio Ambulante" doesn't show up under Grammar.
 function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty, category }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const blurTimeout = useRef(null)
@@ -60,7 +55,6 @@ function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty
             Notes <span style={{ opacity: 0.6 }}>(e.g. podcast or book title)</span>
           </label>
 
-          {/* Recent-for-this-category chips — tap to fill instantly, no retyping. */}
           {suggestions.length > 0 && (
             <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
               {suggestions.map((text) => (
@@ -127,7 +121,6 @@ function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty
               setShowDropdown(true)
             }}
             onBlur={() => {
-              // Small delay so a click on a dropdown option registers before it unmounts.
               blurTimeout.current = setTimeout(() => setShowDropdown(false), 120)
             }}
             placeholder="What were you working on?"
@@ -145,7 +138,6 @@ function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty
             }}
           />
 
-          {/* Autocomplete while typing, filtered by what's already typed. */}
           {showAutocomplete && (
             <div
               style={{

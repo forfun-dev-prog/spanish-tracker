@@ -4,19 +4,13 @@ import OptionalSessionDetails from "./OptionalSessionDetails"
 import LanguageSwitcher from "./LanguageSwitcher"
 import useLanguage from "../hooks/useLanguage"
 
-// Converts an ISO date string (or now) into the localized yyyy-MM-ddThh:mm format
-// without incurring UTC/local shifts.
 function toDatetimeLocalValue(isoString) {
   const d = isoString ? new Date(isoString) : new Date()
-
-  // Offset the date milliseconds to align UTC conversion safely to Local time
   const tzOffset = d.getTimezoneOffset() * 60000
   const localISOTime = new Date(d.getTime() - tzOffset).toISOString()
-
-  return localISOTime.slice(0, 16) // Returns "YYYY-MM-DDTHH:mm"
+  return localISOTime.slice(0, 16)
 }
 
-// --- Themed field primitives, kept local so this form has no external deps ---
 const labelStyle = {
   display: "block",
   fontSize: 12,
@@ -40,11 +34,10 @@ const inputBaseStyle = {
   borderRadius: 12,
   outline: "none",
   transition: "border-color .15s, box-shadow .15s",
-  colorScheme: "dark", // keeps native date/number spinner icons visible on a dark field
+  colorScheme: "dark",
 }
 
 function useFocusGlow() {
-  // Small helper so every field gets the same focus ring without repeating handlers.
   const [focused, setFocused] = useState(false)
   return {
     focused,
@@ -76,8 +69,6 @@ function SessionForm({ session, onSave, onCancel }) {
   const [minutes, setMinutes] = useState(
     session ? String(Math.round(session.duration / 60)) : ""
   )
-  // null means "not overridden yet" — falls back to the session's own
-  // language when editing, or today's active language when adding.
   const [languageCode, setLanguageCode] = useState(session?.language || null)
   const [details, setDetails] = useState(session?.details || "")
   const [difficulty, setDifficulty] = useState(session?.difficulty || null)
@@ -105,9 +96,6 @@ function SessionForm({ session, onSave, onCancel }) {
       return
     }
 
-    // details/difficulty are always included (as null when empty) so that
-    // clearing a field on an edit actually clears it, rather than leaving
-    // the old value behind because the key was omitted from the update.
     const payload = {
       category,
       date: new Date(dateValue).toISOString(),
@@ -124,9 +112,9 @@ function SessionForm({ session, onSave, onCancel }) {
     }
   }
 
-  const categoryGlow = useFocusGlow()
   const dateGlow = useFocusGlow()
   const minutesGlow = useFocusGlow()
+  const categoryGlow = useFocusGlow()
 
   return (
     <form onSubmit={handleSubmit}>
@@ -161,9 +149,6 @@ function SessionForm({ session, onSave, onCancel }) {
         </select>
       </Field>
 
-      {/* Date & Time and Duration share a row — Date gets more room since it
-          needs it; flex-wrap means they drop back to stacked if the modal
-          ever renders narrower than expected, instead of squeezing unreadably. */}
       <div style={{ display: "flex", flexWrap: "wrap", gap: 12, marginBottom: 18 }}>
         <div style={{ flex: "2 1 200px", minWidth: 0 }}>
           <label style={labelStyle}>Date &amp; time</label>

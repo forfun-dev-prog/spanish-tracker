@@ -1,7 +1,6 @@
 // src/components/Modal.jsx
 import { useEffect } from "react"
 
-// Lightweight themed modal: closes on backdrop click or Escape.
 function Modal({ children, onClose }) {
   useEffect(() => {
     const onKey = (e) => {

@@ -9,9 +9,8 @@ import { LANGUAGES, getLanguage } from "../data/languages"
 //   remembered current language directly. Used for the Dashboard header pill.
 // - Controlled (value + onChange provided): displays `value` instead of the
 //   global current language, so e.g. editing an old session shows that
-//   session's own language rather than jumping to today's active one. Picking
-//   a language still updates the global recent-languages list either way —
-//   that's what keeps "remembered" and "recent" in sync everywhere.
+//   session's own language. Picking a language still updates the global
+//   recent-languages list either way.
 function LanguageSwitcher({ value, onChange, label }) {
   const { currentLanguage, recentLanguages, selectLanguage } = useLanguage()
   const [isOpen, setIsOpen] = useState(false)

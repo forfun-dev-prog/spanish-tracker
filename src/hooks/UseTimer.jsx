@@ -16,7 +16,6 @@ function useTimer() {
     return () => clearInterval(interval)
   }, [running])
 
-  // Memoizing these functions prevents unnecessary re-renders in components using this hook
   const start = useCallback(() => {
     setRunning(true)
   }, [])

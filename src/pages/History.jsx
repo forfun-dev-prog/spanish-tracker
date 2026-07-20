@@ -3,14 +3,13 @@ import { useState } from "react"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
 import Modal from "../components/Modal"
-import { useReward } from "../components/RewardCelebration"
 import { getDifficultyMeta } from "../components/OptionalSessionDetails"
 import { ACTIVITY_COLORS } from "../constants/activities"
+import { getLanguage } from "../data/languages"
 import { clearAllData } from "../services/database"
 
 function History() {
   const { sessions, addSession, updateSession, deleteSession } = useSessions()
-  const celebrate = useReward()
 
   const [editingSession, setEditingSession] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
@@ -39,24 +38,17 @@ function History() {
   const handleSave = async (data) => {
     if (data.id) {
       const { id, ...changes } = data
-      await updateSession(id, changes) // editing does not award tokens
+      await updateSession(id, changes)
     } else {
-      const result = await addSession(data)
-      if (result && result.tokensEarned > 0) {
-        celebrate({
-          title: `+${result.tokensEarned} Spin Token${result.tokensEarned > 1 ? "s" : ""}`,
-          subtitle: result.message,
-        })
-      }
+      await addSession(data)
     }
     closeForm()
   }
 
-  // Temporary dev tool — wipes sessions, tokens, coins, and owned bears.
-  // Remove this button once the app is being used to track real hours.
+  // Temporary dev tool — wipes all sessions. Remove before tracking real hours.
   const handleClearAllData = async () => {
     const confirmed = window.confirm(
-      "This permanently deletes ALL sessions, tokens, coins, and teddy bears. There is no undo. Continue?"
+      "This permanently deletes ALL sessions. There is no undo. Continue?"
     )
     if (!confirmed) return
     await clearAllData()
@@ -89,7 +81,6 @@ function History() {
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(139, 92, 246, 0.15)",
       }}
     >
-      {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
         <div>
           <h2 style={{ fontSize: "26px", fontWeight: "900", margin: "0", color: "#ffffff" }}>📚 Study History</h2>
@@ -118,7 +109,6 @@ function History() {
 
       <hr style={{ borderColor: "rgba(255,255,255,0.06)", marginBottom: "20px" }} />
 
-      {/* Session list */}
       <div style={{ display: "flex", flexDirection: "column", gap: "14px", maxHeight: "500px", overflowY: "auto", paddingRight: "4px" }}>
         {sessions.length === 0 ? (
           <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>
@@ -128,6 +118,7 @@ function History() {
           sessions.map((session) => {
             const accentColor = getActivityColor(session.category)
             const difficultyMeta = getDifficultyMeta(session.difficulty)
+            const language = session.language ? getLanguage(session.language) : null
             return (
               <div
                 key={session.id}
@@ -146,6 +137,7 @@ function History() {
               >
                 <div style={{ minWidth: 0 }}>
                   <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
+                    {language && <span style={{ marginRight: 6 }}>{language.flag}</span>}
                     {session.category}
                   </h4>
                   <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#94a3b8", flexWrap: "wrap" }}>
@@ -214,7 +206,6 @@ function History() {
         )}
       </div>
 
-      {/* --- TEMPORARY DEV TOOL — remove before real use --- */}
       <div style={{ marginTop: 32, paddingTop: 20, borderTop: "1px dashed rgba(239,68,68,0.35)" }}>
         <div style={{ fontSize: 11, fontWeight: 800, color: "#f87171", textTransform: "uppercase", letterSpacing: "1px", marginBottom: 10, textAlign: "center" }}>
           ⚠️ Danger Zone — Dev Only
@@ -239,11 +230,10 @@ function History() {
           🗑️ Clear All Data
         </button>
         <p style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-          Wipes every session, token, coin, and teddy bear. Remove this button before tracking real hours.
+          Wipes every session. Remove this button before tracking real hours.
         </p>
       </div>
 
-      {/* Add / Edit modal */}
       {isFormOpen && (
         <Modal onClose={closeForm}>
           <SessionForm session={editingSession} onSave={handleSave} onCancel={closeForm} />
