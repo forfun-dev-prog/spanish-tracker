@@ -2,9 +2,9 @@
 import Dexie from "dexie"
 import { DEFAULT_LANGUAGE_CODE } from "../data/languages"
 
-const db = new Dexie("LanguageAnalytics")
+const db = new Dexie("LanguageTracker")
 
-db.version(1).stores({
+db.version(2).stores({
   sessions: "++id,date,category,duration",
   metadata: "key,value",
 })
@@ -57,8 +57,7 @@ export async function excludeSuggestion(category, detailText) {
 
 // --- Language Selection ---
 // The "current language" IS just the front of this list — no separate
-// pointer to keep in sync. Persisted, so it's remembered across reloads;
-// capped at 3 so polyglots get quick one-tap access to their recent set.
+// pointer to keep in sync. Persisted, capped at 3 for quick polyglot access.
 export async function getRecentLanguageCodes() {
   try {
     const row = await db.metadata.get("recentLanguages")
@@ -77,6 +76,28 @@ export async function selectLanguage(code) {
     await db.metadata.put({ key: "recentLanguages", value: next })
   } catch (e) {
     console.error("Error selecting language:", e)
+  }
+}
+
+// --- Study Plan Settings ---
+// Daily time goal + per-category priority weights (0-5, 0 = excluded).
+// This is the only persisted state the Plan page needs — daily task
+// completion is computed live from actual logged sessions, never stored.
+export async function getStudyPlanSettings() {
+  try {
+    const row = await db.metadata.get("studyPlanSettings")
+    return row?.value || null
+  } catch (e) {
+    console.error("Error reading study plan settings:", e)
+    return null
+  }
+}
+
+export async function saveStudyPlanSettings(settings) {
+  try {
+    await db.metadata.put({ key: "studyPlanSettings", value: settings })
+  } catch (e) {
+    console.error("Error saving study plan settings:", e)
   }
 }
 

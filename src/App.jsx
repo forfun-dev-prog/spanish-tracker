@@ -9,7 +9,7 @@ import Modal from "./components/Modal"
 import LanguageSwitcher from "./components/LanguageSwitcher"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
-import Achievements from "./pages/Achievements"
+import Plan from "./pages/Plan"
 import useSessions from "./hooks/useSessions"
 import useLanguage from "./hooks/useLanguage"
 
@@ -17,7 +17,7 @@ import useLanguage from "./hooks/useLanguage"
 function PremiumNavBar() {
   const location = useLocation()
 
-  const getLinkStyle = (path, isSpecial = false) => {
+  const getLinkStyle = (path) => {
     const isActive = location.pathname === path
 
     return {
@@ -29,19 +29,9 @@ function PremiumNavBar() {
       padding: "8px 16px",
       borderRadius: "10px",
       transition: "all 0.2s ease-in-out",
-
-      ...(isSpecial
-        ? {
-            color: "#fbbf24",
-            background: isActive ? "rgba(251, 191, 36, 0.15)" : "transparent",
-            border: isActive ? "1px solid #fbbf24" : "1px solid rgba(251, 191, 36, 0.3)",
-            boxShadow: isActive ? "0 0 12px rgba(251, 191, 36, 0.2)" : "none",
-          }
-        : {
-            color: isActive ? "#ffffff" : "#94a3b8",
-            background: isActive ? "rgba(255, 255, 255, 0.05)" : "transparent",
-            border: "1px solid transparent",
-          }),
+      color: isActive ? "#ffffff" : "#94a3b8",
+      background: isActive ? "rgba(255, 255, 255, 0.05)" : "transparent",
+      border: "1px solid transparent",
     }
   }
 
@@ -60,9 +50,9 @@ function PremiumNavBar() {
       }}
     >
       <Link to="/" style={getLinkStyle("/")}>Home</Link>
+      <Link to="/plan" style={getLinkStyle("/plan")}>🗓️ Plan</Link>
       <Link to="/history" style={getLinkStyle("/history")}>History</Link>
       <Link to="/stats" style={getLinkStyle("/stats")}>Stats</Link>
-      <Link to="/achievements" style={getLinkStyle("/achievements")}>🏆 Badges</Link>
     </nav>
   )
 }
@@ -72,20 +62,10 @@ function Dashboard() {
   const [isAddOpen, setIsAddOpen] = useState(false)
 
   const { currentLanguage } = useLanguage()
-
-  // Token-aware session creator, shared by both the timer's Save button and
-  // this page's manual "+ Add Session" button.
   const { addSession } = useSessions()
-  const celebrate = useReward()
 
   const handleManualSave = async (data) => {
-    const result = await addSession(data)
-    if (result && result.tokensEarned > 0) {
-      celebrate({
-        title: `+${result.tokensEarned} Spin Token${result.tokensEarned > 1 ? "s" : ""}`,
-        subtitle: result.message,
-      })
-    }
+    await addSession(data)
     setIsAddOpen(false)
   }
 
@@ -127,14 +107,10 @@ function Dashboard() {
         Optimize your daily learning flow
       </p>
 
-      {/* Studying more than one language? Switch here — it's remembered for
-          next time, and the timer below tags every session with it. */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px" }}>
         <LanguageSwitcher label="Studying" />
       </div>
 
-      {/* The two main actions of the app, both visible immediately:
-          time a session live below, or log one manually right here. */}
       <button
         onClick={() => setIsAddOpen(true)}
         style={{
@@ -171,18 +147,16 @@ function Dashboard() {
 
 function App() {
   return (
-    <RewardProvider>
-      <BrowserRouter>
-        <PremiumNavBar />
+    <BrowserRouter>
+      <PremiumNavBar />
 
-        <Routes>
-          <Route path="/" element={<Dashboard />} />
-          <Route path="/history" element={<History />} />
-          <Route path="/stats" element={<Stats />} />
-          <Route path="/achievements" element={<Achievements />} />
-        </Routes>
-      </BrowserRouter>
-    </RewardProvider>
+      <Routes>
+        <Route path="/" element={<Dashboard />} />
+        <Route path="/plan" element={<Plan />} />
+        <Route path="/history" element={<History />} />
+        <Route path="/stats" element={<Stats />} />
+      </Routes>
+    </BrowserRouter>
   )
 }
 
