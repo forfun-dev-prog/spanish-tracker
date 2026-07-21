@@ -1,118 +1,109 @@
 // src/services/database.js
-import Dexie from "dexie"
-import { DEFAULT_LANGUAGE_CODE } from "../data/languages"
+import { supabase } from "./supabaseClient"
 
-const db = new Dexie("LanguageTracker")
-
-db.version(2).stores({
-  sessions: "++id,date,category,duration",
-  metadata: "key,value",
-})
-
-// --- CORE CRUD Operations ---
-export async function addSession(session) {
-  return await db.sessions.add(session)
+// --- Sessions ---
+export async function fetchSessions() {
+  // Newest first — a behavior change from the old Dexie version (which had
+  // no explicit order and happened to come back oldest-first via
+  // auto-increment id). Flagging since History's list order flips as a result.
+  const { data, error } = await supabase.from("sessions").select("*").order("date", { ascending: false })
+  if (error) {
+    console.error("Error fetching sessions:", error)
+    return []
+  }
+  return data
 }
 
-export async function getSessions() {
-  return await db.sessions.toArray()
+export async function addSession(session, userId) {
+  const { data, error } = await supabase
+    .from("sessions")
+    .insert({ ...session, user_id: userId })
+    .select()
+    .single()
+  if (error) {
+    console.error("Error adding session:", error)
+    throw error
+  }
+  return data
 }
 
 export async function updateSession(id, changes) {
-  await db.sessions.update(id, changes)
+  const { data, error } = await supabase.from("sessions").update(changes).eq("id", id).select().single()
+  if (error) {
+    console.error("Error updating session:", error)
+    throw error
+  }
+  return data
 }
 
 export async function deleteSession(id) {
-  await db.sessions.delete(id)
+  const { error } = await supabase.from("sessions").delete().eq("id", id)
+  if (error) {
+    console.error("Error deleting session:", error)
+    throw error
+  }
+}
+
+// --- Generic per-user metadata (mirrors the old Dexie key/value table) ---
+async function getMetadata(userId, key) {
+  const { data, error } = await supabase
+    .from("metadata")
+    .select("value")
+    .eq("user_id", userId)
+    .eq("key", key)
+    .maybeSingle()
+  if (error) {
+    console.error(`Error reading metadata "${key}":`, error)
+    return null
+  }
+  return data?.value ?? null
+}
+
+async function setMetadata(userId, key, value) {
+  const { error } = await supabase.from("metadata").upsert({ user_id: userId, key, value })
+  if (error) {
+    console.error(`Error saving metadata "${key}":`, error)
+  }
 }
 
 // --- Detail Suggestion Exclusions ---
-// "Hides" a specific details value from future suggestion chips/autocomplete
-// for a category (e.g. to fix a typo that keeps reappearing). This never
-// touches past session records — only what gets suggested going forward.
-export async function getSuggestionExclusions(category) {
-  try {
-    const row = await db.metadata.get("suggestionExclusions")
-    const map = row?.value || {}
-    return map[category] || []
-  } catch (e) {
-    console.error("Error reading suggestion exclusions:", e)
-    return []
-  }
+export async function getSuggestionExclusions(userId, category) {
+  const map = (await getMetadata(userId, "suggestionExclusions")) || {}
+  return map[category] || []
 }
 
-export async function excludeSuggestion(category, detailText) {
-  try {
-    const row = await db.metadata.get("suggestionExclusions")
-    const map = row?.value || {}
-    const normalized = detailText.trim().toLowerCase()
-    const set = new Set(map[category] || [])
-    set.add(normalized)
-    map[category] = Array.from(set)
-    await db.metadata.put({ key: "suggestionExclusions", value: map })
-  } catch (e) {
-    console.error("Error excluding suggestion:", e)
-  }
+export async function excludeSuggestion(userId, category, detailText) {
+  const map = (await getMetadata(userId, "suggestionExclusions")) || {}
+  const normalized = detailText.trim().toLowerCase()
+  const set = new Set(map[category] || [])
+  set.add(normalized)
+  map[category] = Array.from(set)
+  await setMetadata(userId, "suggestionExclusions", map)
 }
 
 // --- Language Selection ---
-// The "current language" IS just the front of this list — no separate
-// pointer to keep in sync. Persisted, capped at 3 for quick polyglot access.
-export async function getRecentLanguageCodes() {
-  try {
-    const row = await db.metadata.get("recentLanguages")
-    return row?.value?.length ? row.value : [DEFAULT_LANGUAGE_CODE]
-  } catch (e) {
-    console.error("Error reading recent languages:", e)
-    return [DEFAULT_LANGUAGE_CODE]
-  }
+export async function getRecentLanguageCodes(userId, defaultCode) {
+  const codes = await getMetadata(userId, "recentLanguages")
+  return codes?.length ? codes : [defaultCode]
 }
 
-export async function selectLanguage(code) {
-  try {
-    const row = await db.metadata.get("recentLanguages")
-    const current = row?.value || []
-    const next = [code, ...current.filter((c) => c !== code)].slice(0, 3)
-    await db.metadata.put({ key: "recentLanguages", value: next })
-  } catch (e) {
-    console.error("Error selecting language:", e)
-  }
+export async function selectLanguage(userId, code) {
+  const current = (await getMetadata(userId, "recentLanguages")) || []
+  const next = [code, ...current.filter((c) => c !== code)].slice(0, 3)
+  await setMetadata(userId, "recentLanguages", next)
 }
 
 // --- Study Plan Settings ---
-// Daily time goal + per-category priority weights (0-5, 0 = excluded).
-// This is the only persisted state the Plan page needs — daily task
-// completion is computed live from actual logged sessions, never stored.
-export async function getStudyPlanSettings() {
-  try {
-    const row = await db.metadata.get("studyPlanSettings")
-    return row?.value || null
-  } catch (e) {
-    console.error("Error reading study plan settings:", e)
-    return null
-  }
+export async function getStudyPlanSettings(userId) {
+  return await getMetadata(userId, "studyPlanSettings")
 }
 
-export async function saveStudyPlanSettings(settings) {
-  try {
-    await db.metadata.put({ key: "studyPlanSettings", value: settings })
-  } catch (e) {
-    console.error("Error saving study plan settings:", e)
-  }
+export async function saveStudyPlanSettings(userId, settings) {
+  await setMetadata(userId, "studyPlanSettings", settings)
 }
 
 // --- DEV TOOL: Clear All Data ---
-// Wipes every session and every metadata entry. No undo. Remove the UI
-// button for this once the app is tracking real study hours.
-export async function clearAllData() {
-  try {
-    await db.transaction("rw", db.sessions, db.metadata, async () => {
-      await db.sessions.clear()
-      await db.metadata.clear()
-    })
-  } catch (e) {
-    console.error("clearAllData failed:", e)
-  }
+export async function clearAllData(userId) {
+  await supabase.from("sessions").delete().eq("user_id", userId)
+  await supabase.from("metadata").delete().eq("user_id", userId)
 }
-
-export default db

@@ -1,5 +1,6 @@
 // src/pages/History.jsx
 import { useState } from "react"
+import { useAuth } from "../context/AuthContext"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
 import Modal from "../components/Modal"
@@ -9,6 +10,7 @@ import { getLanguage } from "../data/languages"
 import { clearAllData } from "../services/database"
 
 function History() {
+  const { user } = useAuth()
   const { sessions, addSession, updateSession, deleteSession } = useSessions()
 
   const [editingSession, setEditingSession] = useState(null)
@@ -45,13 +47,14 @@ function History() {
     closeForm()
   }
 
-  // Temporary dev tool — wipes all sessions. Remove before tracking real hours.
+  // Temporary dev tool — wipes all of this account's data in the cloud.
+  // Remove before tracking real hours.
   const handleClearAllData = async () => {
     const confirmed = window.confirm(
-      "This permanently deletes ALL sessions. There is no undo. Continue?"
+      "This permanently deletes ALL sessions and settings for this account. There is no undo. Continue?"
     )
     if (!confirmed) return
-    await clearAllData()
+    await clearAllData(user.id)
   }
 
   const formatMinutes = (seconds) => Math.round(seconds / 60)
@@ -230,7 +233,7 @@ function History() {
           🗑️ Clear All Data
         </button>
         <p style={{ fontSize: 11, color: "#64748b", marginTop: 8, textAlign: "center" }}>
-          Wipes every session. Remove this button before tracking real hours.
+          Wipes every session for this account. Remove this button before tracking real hours.
         </p>
       </div>
 

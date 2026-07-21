@@ -1,25 +1,28 @@
 // src/App.jsx
-import { BrowserRouter, Routes, Route, Link, useLocation } from "react-router-dom"
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from "react-router-dom"
 import { useState } from "react"
+import { AuthProvider, useAuth } from "./context/AuthContext"
+import { SessionsProvider } from "./context/SessionsContext"
+import { LanguageProvider } from "./context/LanguageContext"
 
 import TimerCard from "./components/TimerCard"
 import CategorySelector from "./components/CategorySelector"
 import SessionForm from "./components/SessionForm"
 import Modal from "./components/Modal"
 import LanguageSwitcher from "./components/LanguageSwitcher"
+import Login from "./pages/Login"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
 import Plan from "./pages/Plan"
 import useSessions from "./hooks/useSessions"
 import useLanguage from "./hooks/useLanguage"
 
-// Styled Navigation Component to detect the active route
 function PremiumNavBar() {
   const location = useLocation()
+  const { user, signOut } = useAuth()
 
   const getLinkStyle = (path) => {
     const isActive = location.pathname === path
-
     return {
       textDecoration: "none",
       fontSize: "14px",
@@ -53,6 +56,25 @@ function PremiumNavBar() {
       <Link to="/plan" style={getLinkStyle("/plan")}>🗓️ Plan</Link>
       <Link to="/history" style={getLinkStyle("/history")}>History</Link>
       <Link to="/stats" style={getLinkStyle("/stats")}>Stats</Link>
+      {user && (
+        <button
+          onClick={signOut}
+          style={{
+            fontSize: "14px",
+            fontWeight: "800",
+            letterSpacing: "0.5px",
+            textTransform: "uppercase",
+            padding: "8px 16px",
+            borderRadius: "10px",
+            background: "transparent",
+            border: "1px solid rgba(255,255,255,0.1)",
+            color: "#f87171",
+            cursor: "pointer",
+          }}
+        >
+          Sign Out
+        </button>
+      )}
     </nav>
   )
 }
@@ -145,18 +167,54 @@ function Dashboard() {
   )
 }
 
+// Everything here assumes a signed-in user — SessionsProvider/LanguageProvider
+// both read `user` from AuthContext internally, so they must live inside it.
+function AuthenticatedApp() {
+  return (
+    <SessionsProvider>
+      <LanguageProvider>
+        <BrowserRouter>
+          <PremiumNavBar />
+          <Routes>
+            <Route path="/" element={<Dashboard />} />
+            <Route path="/plan" element={<Plan />} />
+            <Route path="/history" element={<History />} />
+            <Route path="/stats" element={<Stats />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </LanguageProvider>
+    </SessionsProvider>
+  )
+}
+
+function Gate() {
+  const { user, isLoading } = useAuth()
+
+  if (isLoading) {
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#a5b4fc", background: "#090514" }}>
+        Loading…
+      </div>
+    )
+  }
+
+  if (!user) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#090514" }}>
+        <Login />
+      </div>
+    )
+  }
+
+  return <AuthenticatedApp />
+}
+
 function App() {
   return (
-    <BrowserRouter>
-      <PremiumNavBar />
-
-      <Routes>
-        <Route path="/" element={<Dashboard />} />
-        <Route path="/plan" element={<Plan />} />
-        <Route path="/history" element={<History />} />
-        <Route path="/stats" element={<Stats />} />
-      </Routes>
-    </BrowserRouter>
+    <AuthProvider>
+      <Gate />
+    </AuthProvider>
   )
 }
 

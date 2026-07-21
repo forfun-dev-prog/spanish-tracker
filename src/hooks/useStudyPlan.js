@@ -1,14 +1,13 @@
 // src/hooks/useStudyPlan.js
-import { useMemo } from "react"
-import { useLiveQuery } from "dexie-react-hooks"
-import db, { saveStudyPlanSettings } from "../services/database"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useAuth } from "../context/AuthContext"
 import useSessions from "./useSessions"
 import useLanguage from "./useLanguage"
+import * as db from "../services/database"
 import { CATEGORY_ICONS } from "../constants/activities"
 import { generateDailyPlan, defaultWeights, DEFAULT_DAILY_MINUTES, DEFAULT_MAX_DAILY_TASKS } from "../utils/studyPlan"
 
 const ALL_CATEGORIES = Object.keys(CATEGORY_ICONS)
-
 const DEFAULT_SETTINGS = {
   dailyMinutesGoal: DEFAULT_DAILY_MINUTES,
   maxDailyTasks: DEFAULT_MAX_DAILY_TASKS,
@@ -16,22 +15,27 @@ const DEFAULT_SETTINGS = {
 }
 
 function useStudyPlan() {
+  const { user } = useAuth()
   const { sessions } = useSessions()
   const { currentLanguage } = useLanguage()
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS)
 
-  // Merges saved settings over the defaults so older saved settings (from
-  // before maxDailyTasks existed) still work without a migration step.
-  const settings = useLiveQuery(
-    async () => {
-      const row = await db.metadata.get("studyPlanSettings")
-      return row?.value ? { ...DEFAULT_SETTINGS, ...row.value } : DEFAULT_SETTINGS
+  useEffect(() => {
+    if (!user) return
+    db.getStudyPlanSettings(user.id).then((saved) => {
+      setSettings(saved ? { ...DEFAULT_SETTINGS, ...saved } : DEFAULT_SETTINGS)
+    })
+  }, [user])
+
+  const saveSettings = useCallback(
+    async (changes) => {
+      const next = { ...settings, ...changes }
+      setSettings(next) // optimistic — Plan Settings UI reflects it instantly
+      if (user) await db.saveStudyPlanSettings(user.id, next)
     },
-    [],
-    DEFAULT_SETTINGS
+    [settings, user]
   )
 
-  // Scoped to the current language. Sessions logged before language tagging
-  // existed still count — only an explicit mismatch excludes them.
   const languageSessions = useMemo(
     () => sessions.filter((s) => !s.language || s.language === currentLanguage.code),
     [sessions, currentLanguage]
@@ -49,8 +53,6 @@ function useStudyPlan() {
     [settings, languageSessions]
   )
 
-  // Today's progress per task is computed separately from selection, so
-  // logging a session updates the checkbox live without reshuffling the list.
   const todaysTasks = useMemo(() => {
     const todayKey = new Date().toDateString()
     return tasks.map((task) => {
@@ -63,16 +65,7 @@ function useStudyPlan() {
 
   const excludedCategories = ALL_CATEGORIES.filter((c) => (settings.weights[c] ?? 0) === 0)
 
-  const saveSettings = (changes) => saveStudyPlanSettings({ ...settings, ...changes })
-
-  return {
-    settings,
-    todaysTasks,
-    redistribution,
-    excludedCategories,
-    saveSettings,
-    allCategories: ALL_CATEGORIES,
-  }
+  return { settings, todaysTasks, redistribution, excludedCategories, saveSettings, allCategories: ALL_CATEGORIES }
 }
 
 export default useStudyPlan

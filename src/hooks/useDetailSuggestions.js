@@ -1,29 +1,33 @@
 // src/hooks/useDetailSuggestions.js
-import { useMemo } from "react"
-import { useLiveQuery } from "dexie-react-hooks"
-import db, { excludeSuggestion } from "../services/database"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useAuth } from "../context/AuthContext"
 import useSessions from "./useSessions"
+import * as db from "../services/database"
 import { rankDetailSuggestions, filterSuggestions } from "../utils/detailSuggestions"
 
 function useDetailSuggestions(category) {
+  const { user } = useAuth()
   const { sessions } = useSessions()
+  const [exclusions, setExclusions] = useState([])
 
-  const exclusions = useLiveQuery(
-    async () => {
-      const row = await db.metadata.get("suggestionExclusions")
-      const map = row?.value || {}
-      return map[category] || []
-    },
-    [category],
-    []
-  )
+  useEffect(() => {
+    if (!user) return
+    db.getSuggestionExclusions(user.id, category).then(setExclusions)
+  }, [user, category])
 
   const suggestions = useMemo(
-    () => rankDetailSuggestions(sessions, category, exclusions || []),
+    () => rankDetailSuggestions(sessions, category, exclusions),
     [sessions, category, exclusions]
   )
 
-  const exclude = (text) => excludeSuggestion(category, text)
+  const exclude = useCallback(
+    async (text) => {
+      if (!user) return
+      await db.excludeSuggestion(user.id, category, text)
+      setExclusions((prev) => [...prev, text.trim().toLowerCase()])
+    },
+    [user, category]
+  )
 
   return { suggestions, exclude, filterSuggestions }
 }
