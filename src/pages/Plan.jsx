@@ -78,12 +78,6 @@ function Plan() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [goalInput, setGoalInput] = useState(String(settings.dailyMinutesGoal))
 
-  // useLiveQuery resolves asynchronously — on mount `settings` briefly holds
-  // the default (30) before the actual saved value loads. The useState above
-  // only captures whatever that value was at that first instant and never
-  // re-runs on its own, so without this effect the field silently sticks to
-  // the default even after the real setting arrives. Re-sync whenever the
-  // loaded value actually changes (including that first default -> real swap).
   useEffect(() => {
     setGoalInput(String(settings.dailyMinutesGoal))
   }, [settings.dailyMinutesGoal])
@@ -106,10 +100,10 @@ function Plan() {
 
   return (
     <div style={{ maxWidth: "600px", margin: "40px auto", padding: "32px 24px", background: "#0f0a1e", color: "#f8fafc", borderRadius: "28px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)" }}>
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
-        <h1 style={{ fontSize: "32px", fontWeight: "900", margin: "0" }}>🗓️ Study Plan</h1>
-        <p style={{ color: "#a5b4fc", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px" }}>
-          What to study next, not just what you've done
+      <div style={{ textAlign: "center", marginBottom: "24px" }}>
+        <h1 style={{ fontSize: "32px", fontWeight: "900", margin: "0 0 6px 0" }}>🗓️ Study Plan</h1>
+        <p style={{ color: "#94a3b8", fontSize: "13px", margin: 0, fontWeight: 500 }}>
+          What to study next, based on your priorities and recent activity
         </p>
       </div>
 
@@ -299,7 +293,19 @@ function Plan() {
                         <span>{icons}</span>
                         <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.label}</span>
                         {task.isCatchingUp && !task.done && (
-                          <span style={{ fontSize: 10, fontWeight: 800, color: "#fbbf24", background: "rgba(251,191,36,0.12)", padding: "2px 6px", borderRadius: 6, flexShrink: 0 }}>
+                          <span
+                            title="This activity has gotten less than half its usual share of study time over the past week, so it's been prioritized today to help it catch up."
+                            style={{
+                              fontSize: 10,
+                              fontWeight: 800,
+                              color: "#fbbf24",
+                              background: "rgba(251,191,36,0.12)",
+                              padding: "2px 6px",
+                              borderRadius: 6,
+                              flexShrink: 0,
+                              cursor: "help",
+                            }}
+                          >
                             ⏳ Catching up
                           </span>
                         )}

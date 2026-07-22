@@ -4,6 +4,7 @@ import { useState } from "react"
 import { AuthProvider, useAuth } from "./context/AuthContext"
 import { SessionsProvider } from "./context/SessionsContext"
 import { LanguageProvider } from "./context/LanguageContext"
+import { StudyPlanProvider } from "./context/StudyPlanContext"
 
 import TimerCard from "./components/TimerCard"
 import CategorySelector from "./components/CategorySelector"
@@ -11,15 +12,19 @@ import SessionForm from "./components/SessionForm"
 import Modal from "./components/Modal"
 import LanguageSwitcher from "./components/LanguageSwitcher"
 import Login from "./pages/Login"
+import ResetPassword from "./pages/ResetPassword"
 import History from "./pages/History"
 import Stats from "./pages/Stats"
 import Plan from "./pages/Plan"
 import useSessions from "./hooks/useSessions"
 import useLanguage from "./hooks/useLanguage"
+import useStudyPlan from "./hooks/useStudyPlan"
 
 function PremiumNavBar() {
   const location = useLocation()
   const { user, signOut } = useAuth()
+  const { todaysTasks } = useStudyPlan()
+  const incompleteCount = todaysTasks.filter((t) => !t.done).length
 
   const getLinkStyle = (path) => {
     const isActive = location.pathname === path
@@ -35,6 +40,7 @@ function PremiumNavBar() {
       color: isActive ? "#ffffff" : "#94a3b8",
       background: isActive ? "rgba(255, 255, 255, 0.05)" : "transparent",
       border: "1px solid transparent",
+      position: "relative",
     }
   }
 
@@ -53,7 +59,36 @@ function PremiumNavBar() {
       }}
     >
       <Link to="/" style={getLinkStyle("/")}>Home</Link>
-      <Link to="/plan" style={getLinkStyle("/plan")}>🗓️ Plan</Link>
+
+      <Link to="/plan" style={getLinkStyle("/plan")}>
+        🗓️ Plan
+        {incompleteCount > 0 && (
+          <span
+            title={`${incompleteCount} unfinished task${incompleteCount > 1 ? "s" : ""} today`}
+            style={{
+              position: "absolute",
+              top: -5,
+              right: -5,
+              minWidth: 16,
+              height: 16,
+              padding: "0 4px",
+              borderRadius: 999,
+              background: "#ef4444",
+              color: "#ffffff",
+              fontSize: 10,
+              fontWeight: 900,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              lineHeight: 1,
+              boxShadow: "0 0 0 2px #090514",
+            }}
+          >
+            {incompleteCount}
+          </span>
+        )}
+      </Link>
+
       <Link to="/history" style={getLinkStyle("/history")}>History</Link>
       <Link to="/stats" style={getLinkStyle("/stats")}>Stats</Link>
       {user && (
@@ -167,34 +202,46 @@ function Dashboard() {
   )
 }
 
-// Everything here assumes a signed-in user — SessionsProvider/LanguageProvider
-// both read `user` from AuthContext internally, so they must live inside it.
 function AuthenticatedApp() {
   return (
     <SessionsProvider>
       <LanguageProvider>
-        <BrowserRouter>
-          <PremiumNavBar />
-          <Routes>
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/plan" element={<Plan />} />
-            <Route path="/history" element={<History />} />
-            <Route path="/stats" element={<Stats />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </BrowserRouter>
+        <StudyPlanProvider>
+          <BrowserRouter>
+            <PremiumNavBar />
+            <Routes>
+              <Route path="/" element={<Dashboard />} />
+              <Route path="/plan" element={<Plan />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/stats" element={<Stats />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </BrowserRouter>
+        </StudyPlanProvider>
       </LanguageProvider>
     </SessionsProvider>
   )
 }
 
 function Gate() {
-  const { user, isLoading } = useAuth()
+  const { user, isLoading, isPasswordRecovery } = useAuth()
 
   if (isLoading) {
     return (
       <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", color: "#a5b4fc", background: "#090514" }}>
         Loading…
+      </div>
+    )
+  }
+
+  // Checked before the normal signed-in/signed-out branch: clicking a
+  // password-reset email link actually signs the person into a temporary
+  // recovery session, so without this check they'd land straight in the
+  // normal app instead of the "set a new password" screen.
+  if (isPasswordRecovery) {
+    return (
+      <div style={{ minHeight: "100vh", background: "#090514" }}>
+        <ResetPassword />
       </div>
     )
   }

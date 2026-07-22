@@ -18,7 +18,6 @@ const CHART_TYPES = [
   { id: "line", label: "Line" },
 ];
 
-// --- Shared styling ---
 const cardStyle = {
   background: "rgba(15, 10, 30, 0.6)",
   border: "1px solid rgba(255, 255, 255, 0.05)",
@@ -34,7 +33,6 @@ const cardTitleStyle = {
   color: "#ffffff",
 };
 
-// --- Small date/format helpers ---
 const fmtHours = (minutes) => (minutes / 60).toFixed(1);
 const fmtShortDate = (dateOrKey) =>
   new Date(dateOrKey).toLocaleDateString("en-US", { month: "short", day: "numeric" });
@@ -47,7 +45,7 @@ function startOfDay(d) {
 
 function weekStart(d) {
   const x = startOfDay(d);
-  x.setDate(x.getDate() - x.getDay()); // back up to Sunday
+  x.setDate(x.getDate() - x.getDay());
   return x;
 }
 
@@ -61,7 +59,7 @@ const makeBucket = (key, label) => ({
 function bucketKeyFor(date, granularity) {
   if (granularity === "day") return startOfDay(date).toDateString();
   if (granularity === "week") return weekStart(date).toDateString();
-  return `${date.getFullYear()}-${date.getMonth()}`; // month
+  return `${date.getFullYear()}-${date.getMonth()}`;
 }
 
 function bucketLabel(date, granularity) {
@@ -69,7 +67,6 @@ function bucketLabel(date, granularity) {
   return date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-// --- Reusable segmented button control ---
 function Segmented({ options, value, onChange }) {
   return (
     <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.05)", borderRadius: 10, padding: 3, gap: 3, flexWrap: "wrap", justifyContent: "center" }}>
@@ -110,7 +107,6 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-// --- Line chart (crisp stroke via non-scaling-stroke, hover columns for tooltips) ---
 function TrendLine({ buckets, maxBucketTotal }) {
   const W = 600;
   const H = 180;
@@ -161,21 +157,17 @@ function Stats() {
   const [scope, setScope] = useState("30days");
   const [chartType, setChartType] = useState("bar");
 
-  // --- Active-day set for the habit calendar (independent of scope) ---
   const sessionsDateSet = useMemo(() => {
     const set = new Set();
     sessions.forEach((s) => set.add(new Date(s.date).toDateString()));
     return set;
   }, [sessions]);
 
-  // --- Streaks are lifetime by nature (not scoped), shared with Achievements ---
   const { currentStreak, longestStreak } = useMemo(() => computeStreaks(sessions), [sessions]);
 
-  // --- Scoped analytics: totals, per-day min/max/avg, category breakdown, chart buckets ---
   const analytics = useMemo(() => {
     const now = new Date();
 
-    // 1. Resolve the start of the selected scope
     let startDate;
     if (scope === "week") {
       startDate = startOfDay(now);
@@ -188,7 +180,6 @@ function Stats() {
       startDate.setMonth(startDate.getMonth() - 6);
       startDate.setDate(startDate.getDate() + 1);
     } else {
-      // all time -> earliest session (or today if there are none)
       let earliest = now;
       sessions.forEach((s) => {
         const d = new Date(s.date);
@@ -197,11 +188,9 @@ function Stats() {
       startDate = startOfDay(earliest);
     }
 
-    // 2. Choose chart granularity so long ranges stay legible
     const granularity =
       scope === "week" || scope === "30days" ? "day" : scope === "6months" ? "week" : "month";
 
-    // 3. Build empty buckets spanning the range
     const buckets = [];
     if (granularity === "day") {
       const cur = new Date(startDate);
@@ -225,9 +214,8 @@ function Stats() {
     }
     const bucketMap = new Map(buckets.map((b) => [b.key, b]));
 
-    // 4. Aggregate sessions within scope (known categories only, for consistent totals/percentages)
     const categoryMinutes = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
-    const dailyMinutes = new Map(); // real calendar day -> minutes, for min/max/avg
+    const dailyMinutes = new Map();
     let totalMinutes = 0;
 
     sessions.forEach((s) => {
@@ -249,7 +237,6 @@ function Stats() {
       }
     });
 
-    // 5. Min / max / avg across active days
     let minDay = null;
     let maxDay = null;
     dailyMinutes.forEach((mins, key) => {
@@ -259,7 +246,6 @@ function Stats() {
     const activeDays = dailyMinutes.size;
     const avgMinutes = activeDays ? totalMinutes / activeDays : 0;
 
-    // 6. Per-category breakdown (doubles as the chart legend)
     const categoryBreakdown = CATEGORIES.map((cat) => ({
       category: cat,
       minutes: categoryMinutes[cat],
@@ -284,7 +270,6 @@ function Stats() {
     };
   }, [sessions, scope]);
 
-  // --- Habit grid: current month + two previous full months as real calendars ---
   const monthBlocks = useMemo(() => {
     const today = new Date();
     const blocks = [];
@@ -318,7 +303,6 @@ function Stats() {
     return blocks;
   }, [sessionsDateSet]);
 
-  // --- Radar (reflects the selected scope) ---
   const radarSvgSize = 300;
   const center = radarSvgSize / 2;
   const radius = 100;
@@ -351,18 +335,14 @@ function Stats() {
   return (
     <div style={{ maxWidth: "600px", margin: "40px auto", padding: "32px 24px", background: "#0f0a1e", color: "#f8fafc", borderRadius: "28px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)" }}>
 
-      {/* Header */}
-      <div style={{ textAlign: "center", marginBottom: "20px" }}>
+      <div style={{ textAlign: "center", marginBottom: "24px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: "900", margin: "0" }}>📊 Stats Overview</h1>
-        <p style={{ color: "#a5b4fc", fontSize: "14px", textTransform: "uppercase", letterSpacing: "1px" }}>Your Cognitive Tracking</p>
       </div>
 
-      {/* Scope selector — drives the numbers, breakdown, radar, and trend below */}
       <div style={{ display: "flex", justifyContent: "center", marginBottom: 24 }}>
         <Segmented options={SCOPES} value={scope} onChange={setScope} />
       </div>
 
-      {/* Summary */}
       <div style={cardStyle}>
         <h3 style={cardTitleStyle}>Summary</h3>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -370,13 +350,11 @@ function Stats() {
           <StatCard label="Daily avg" value={analytics.activeDays ? `${fmtHours(analytics.avgMinutes)}h` : "—"} sub="per active day" />
           <StatCard label="Peak day" value={maxDay ? `${fmtHours(maxDay.minutes)}h` : "—"} sub={maxDay ? fmtShortDate(maxDay.key) : "—"} />
           <StatCard label="Quietest day" value={minDay ? `${fmtHours(minDay.minutes)}h` : "—"} sub={minDay ? fmtShortDate(minDay.key) : "—"} />
-          {/* Streaks are lifetime, so they stay constant across the scope selector above */}
           <StatCard label="Current streak" value={`${currentStreak}d`} sub={currentStreak > 0 ? "keep it going!" : "start today!"} />
           <StatCard label="Longest streak" value={`${longestStreak}d`} sub="personal best" />
         </div>
       </div>
 
-      {/* Time by Category — legend + hours + percentage */}
       <div style={cardStyle}>
         <h3 style={cardTitleStyle}>Time by Category</h3>
         {categoryBreakdown.length === 0 ? (
@@ -401,7 +379,6 @@ function Stats() {
         )}
       </div>
 
-      {/* Radar Chart */}
       <div style={cardStyle}>
         <h3 style={cardTitleStyle}>Skill Profile</h3>
         <svg width={radarSvgSize} height={radarSvgSize} style={{ overflow: "visible", display: "block", margin: "0 auto" }}>
@@ -418,18 +395,21 @@ function Stats() {
         </svg>
       </div>
 
-      {/* Habit Grid — three calendar months */}
-      <div style={cardStyle}>
+      {/* Habit Grid — sized to keep all 3 months side-by-side down to ~360px
+          viewports: 10px cells, 3px cell gaps, 8px gap between months, and
+          reduced left/right padding on this card only (top/bottom unchanged
+          to match the other cards' vertical rhythm). */}
+      <div style={{ ...cardStyle, padding: "24px 12px" }}>
         <h3 style={cardTitleStyle}>Habit Activity (3 Months)</h3>
-        <div style={{ display: "flex", gap: 18, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
           {monthBlocks.map((block) => (
             <div key={block.key}>
               <div style={{ textAlign: "center", fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "1px", marginBottom: 8 }}>
                 {block.label}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 14px)", gap: 4 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 10px)", gap: 3 }}>
                 {WEEKDAYS.map((wd, i) => (
-                  <div key={`wd-${i}`} style={{ fontSize: 8, color: "#64748b", textAlign: "center", fontWeight: 700 }}>
+                  <div key={`wd-${i}`} style={{ fontSize: 7, color: "#64748b", textAlign: "center", fontWeight: 700 }}>
                     {wd}
                   </div>
                 ))}
@@ -441,10 +421,10 @@ function Stats() {
                       key={cell.dateKey}
                       title={`${cell.label}: ${cell.isActive ? "Completed" : cell.isFuture ? "Upcoming" : "No sessions"}`}
                       style={{
-                        width: 14,
-                        height: 14,
+                        width: 10,
+                        height: 10,
                         boxSizing: "border-box",
-                        borderRadius: 3,
+                        borderRadius: 2,
                         background: cell.isActive
                           ? "#22c55e"
                           : cell.isFuture
@@ -462,7 +442,6 @@ function Stats() {
         </div>
       </div>
 
-      {/* Trend Chart — bar / line toggle, buckets follow the selected scope */}
       <div style={{ ...cardStyle, marginBottom: 0 }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <h3 style={{ margin: 0, fontSize: 18, color: "#ffffff" }}>
@@ -498,7 +477,6 @@ function Stats() {
           <TrendLine buckets={buckets} maxBucketTotal={maxBucketTotal} />
         )}
 
-        {/* Shared x-axis labels */}
         {buckets.length > 0 && (
           <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 10, color: "#64748b", fontWeight: 600 }}>
             <span>{buckets[0].label}</span>

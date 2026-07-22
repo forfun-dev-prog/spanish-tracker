@@ -5,6 +5,8 @@ import * as db from "../services/database"
 
 const SessionsContext = createContext(null)
 
+const sortByDateDesc = (arr) => [...arr].sort((a, b) => new Date(b.date) - new Date(a.date))
+
 // Supabase, unlike Dexie, doesn't automatically notify every component when
 // data changes — there's no built-in useLiveQuery equivalent. This context
 // is the replacement: fetch once, then keep local state in sync by updating
@@ -37,7 +39,10 @@ export function SessionsProvider({ children }) {
   const addSession = useCallback(
     async (session) => {
       const saved = await db.addSession(session, user.id)
-      setSessions((prev) => [saved, ...prev])
+      // Re-sort rather than just prepending: a backdated manual entry (or any
+      // date other than "right now") would otherwise land at the top
+      // regardless of its actual date, breaking newest-first order.
+      setSessions((prev) => sortByDateDesc([saved, ...prev]))
       return saved
     },
     [user]
@@ -45,7 +50,9 @@ export function SessionsProvider({ children }) {
 
   const updateSession = useCallback(async (id, changes) => {
     const saved = await db.updateSession(id, changes)
-    setSessions((prev) => prev.map((s) => (s.id === id ? saved : s)))
+    // Re-sort here too — editing a session's date should move it to its
+    // correct chronological position, not leave it in its old array slot.
+    setSessions((prev) => sortByDateDesc(prev.map((s) => (s.id === id ? saved : s))))
     return saved
   }, [])
 

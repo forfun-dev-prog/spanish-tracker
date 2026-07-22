@@ -1,5 +1,5 @@
 // src/pages/History.jsx
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import { useAuth } from "../context/AuthContext"
 import useSessions from "../hooks/useSessions"
 import SessionForm from "../components/SessionForm"
@@ -15,6 +15,18 @@ function History() {
 
   const [editingSession, setEditingSession] = useState(null)
   const [isFormOpen, setIsFormOpen] = useState(false)
+  const [query, setQuery] = useState("")
+
+  // Case-insensitive substring match against category and notes. Typing
+  // "lis" matches "Listening"; typing "juan" matches a note like "Español
+  // con Juan" — whichever field it's found in.
+  const filteredSessions = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    if (!q) return sessions
+    return sessions.filter(
+      (s) => s.category.toLowerCase().includes(q) || (s.details || "").toLowerCase().includes(q)
+    )
+  }, [sessions, query])
 
   const openAdd = () => {
     setEditingSession(null)
@@ -84,11 +96,13 @@ function History() {
         boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.85), inset 0 0 40px rgba(139, 92, 246, 0.15)",
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "24px" }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
         <div>
           <h2 style={{ fontSize: "26px", fontWeight: "900", margin: "0", color: "#ffffff" }}>📚 Study History</h2>
           <span style={{ fontSize: "13px", color: "#a5b4fc" }}>
-            Total: {sessions.length} {sessions.length === 1 ? "session logged" : "sessions logged"}
+            {query.trim()
+              ? `${filteredSessions.length} of ${sessions.length} sessions match`
+              : `Total: ${sessions.length} ${sessions.length === 1 ? "session logged" : "sessions logged"}`}
           </span>
         </div>
         <button
@@ -110,6 +124,26 @@ function History() {
         </button>
       </div>
 
+      <input
+        type="text"
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Search by activity or notes…"
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 14px",
+          fontSize: 14,
+          fontFamily: "inherit",
+          color: "#f8fafc",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 12,
+          outline: "none",
+          marginBottom: 16,
+        }}
+      />
+
       <hr style={{ borderColor: "rgba(255,255,255,0.06)", marginBottom: "20px" }} />
 
       <div style={{ display: "flex", flexDirection: "column", gap: "14px", maxHeight: "500px", overflowY: "auto", paddingRight: "4px" }}>
@@ -117,8 +151,12 @@ function History() {
           <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>
             No logged items found yet. Start hitting the timers!
           </p>
+        ) : filteredSessions.length === 0 ? (
+          <p style={{ textAlign: "center", color: "#64748b", padding: "40px 0" }}>
+            No sessions match "{query.trim()}".
+          </p>
         ) : (
-          sessions.map((session) => {
+          filteredSessions.map((session) => {
             const accentColor = getActivityColor(session.category)
             const difficultyMeta = getDifficultyMeta(session.difficulty)
             const language = session.language ? getLanguage(session.language) : null
