@@ -20,6 +20,9 @@ const cardTitleStyle = {
 const WEIGHT_OPTIONS = [0, 1, 2, 3, 4, 5]
 const TASK_COUNT_OPTIONS = [1, 2, 3, 4, 5]
 
+const CATCHING_UP_EXPLANATION =
+  "This activity has gotten less than half its usual share of study time over the past week, so it's been prioritized today to help it catch up."
+
 function WeightRow({ category, weight, onChange }) {
   const isExcluded = weight === 0
   return (
@@ -77,10 +80,22 @@ function Plan() {
   const { settings, todaysTasks, redistribution, excludedCategories, saveSettings, allCategories } = useStudyPlan()
   const [isSettingsOpen, setIsSettingsOpen] = useState(false)
   const [goalInput, setGoalInput] = useState(String(settings.dailyMinutesGoal))
+  // Tracks which tasks' "Catching up" explanation is expanded. A Set instead
+  // of a single value so more than one can be open if someone taps a few.
+  const [expandedTaskIds, setExpandedTaskIds] = useState(() => new Set())
 
   useEffect(() => {
     setGoalInput(String(settings.dailyMinutesGoal))
   }, [settings.dailyMinutesGoal])
+
+  const toggleExpanded = (id) => {
+    setExpandedTaskIds((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
 
   const totalTarget = todaysTasks.reduce((sum, t) => sum + t.targetMinutes, 0)
   const totalActual = todaysTasks.reduce((sum, t) => sum + t.actualMinutes, 0)
@@ -260,19 +275,22 @@ function Plan() {
             Every activity is excluded — open Plan Settings above to include at least one.
           </p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
             {todaysTasks.map((task) => {
               const pct = task.targetMinutes > 0 ? Math.min((task.actualMinutes / task.targetMinutes) * 100, 100) : 0
               const barColor = ACTIVITY_COLORS[task.categories[0]] || "#6366f1"
               const icons = task.categories.map((c) => CATEGORY_ICONS[c]).join("")
+              const showBadge = task.isCatchingUp && !task.done
+              const isExpanded = expandedTaskIds.has(task.id)
 
               return (
-                <div key={task.id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <div key={task.id} style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
                   <div
                     style={{
                       width: 24,
                       height: 24,
                       flexShrink: 0,
+                      marginTop: 1,
                       borderRadius: 7,
                       border: `1px solid ${task.done ? "#22c55e" : "rgba(255,255,255,0.15)"}`,
                       background: task.done ? "#22c55e" : "transparent",
@@ -288,32 +306,62 @@ function Plan() {
                   </div>
 
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", fontSize: 14, marginBottom: 5, gap: 8 }}>
-                      <span style={{ display: "flex", alignItems: "center", gap: 6, fontWeight: 800, color: task.done ? "#94a3b8" : "#f8fafc", textDecoration: task.done ? "line-through" : "none", minWidth: 0 }}>
+                    {/* Label + minutes share a line but wrap onto two if
+                        needed, instead of the label getting truncated. */}
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", flexWrap: "wrap", rowGap: 2, columnGap: 8, marginBottom: showBadge ? 6 : 5 }}>
+                      <span
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 6,
+                          fontWeight: 800,
+                          fontSize: 14,
+                          color: task.done ? "#94a3b8" : "#f8fafc",
+                          textDecoration: task.done ? "line-through" : "none",
+                        }}
+                      >
                         <span>{icons}</span>
-                        <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{task.label}</span>
-                        {task.isCatchingUp && !task.done && (
-                          <span
-                            title="This activity has gotten less than half its usual share of study time over the past week, so it's been prioritized today to help it catch up."
-                            style={{
-                              fontSize: 10,
-                              fontWeight: 800,
-                              color: "#fbbf24",
-                              background: "rgba(251,191,36,0.12)",
-                              padding: "2px 6px",
-                              borderRadius: 6,
-                              flexShrink: 0,
-                              cursor: "help",
-                            }}
-                          >
-                            ⏳ Catching up
-                          </span>
-                        )}
+                        <span>{task.label}</span>
                       </span>
-                      <span style={{ color: "#94a3b8", flexShrink: 0 }}>
+                      <span style={{ color: "#94a3b8", fontSize: 13, flexShrink: 0 }}>
                         {Math.round(task.actualMinutes)}/{task.targetMinutes} min
                       </span>
                     </div>
+
+                    {/* Catching up gets its own line, and is now tap-to-expand
+                        rather than hover-only, since a native tooltip never
+                        fires on a touchscreen. */}
+                    {showBadge && (
+                      <div style={{ marginBottom: 6 }}>
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(task.id)}
+                          title={CATCHING_UP_EXPLANATION}
+                          style={{
+                            display: "inline-flex",
+                            alignItems: "center",
+                            gap: 4,
+                            fontSize: 10,
+                            fontWeight: 800,
+                            color: "#fbbf24",
+                            background: "rgba(251,191,36,0.12)",
+                            border: "none",
+                            padding: "3px 8px",
+                            borderRadius: 6,
+                            cursor: "pointer",
+                          }}
+                        >
+                          ⏳ Catching up
+                          <span style={{ fontSize: 9, opacity: 0.8 }}>{isExpanded ? "▲" : "ⓘ"}</span>
+                        </button>
+                        {isExpanded && (
+                          <p style={{ fontSize: 11, color: "#94a3b8", margin: "6px 2px 0 2px", lineHeight: 1.4 }}>
+                            {CATCHING_UP_EXPLANATION}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
                     <div style={{ height: 7, borderRadius: 3.5, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${pct}%`, background: barColor, borderRadius: 3.5 }} />
                     </div>

@@ -17,9 +17,6 @@ function History() {
   const [isFormOpen, setIsFormOpen] = useState(false)
   const [query, setQuery] = useState("")
 
-  // Case-insensitive substring match against category and notes. Typing
-  // "lis" matches "Listening"; typing "juan" matches a note like "Español
-  // con Juan" — whichever field it's found in.
   const filteredSessions = useMemo(() => {
     const q = query.trim().toLowerCase()
     if (!q) return sessions
@@ -59,8 +56,6 @@ function History() {
     closeForm()
   }
 
-  // Temporary dev tool — wipes all of this account's data in the cloud.
-  // Remove before tracking real hours.
   const handleClearAllData = async () => {
     const confirmed = window.confirm(
       "This permanently deletes ALL sessions and settings for this account. There is no undo. Continue?"
@@ -177,10 +172,27 @@ function History() {
                 }}
               >
                 <div style={{ minWidth: 0 }}>
-                  <h4 style={{ margin: "0 0 4px 0", fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
-                    {language && <span style={{ marginRight: 6 }}>{language.flag}</span>}
-                    {session.category}
-                  </h4>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 4 }}>
+                    <h4 style={{ margin: 0, fontSize: "16px", fontWeight: "800", color: "#ffffff" }}>
+                      {language && <span style={{ marginRight: 6 }}>{language.flag}</span>}
+                      {session.category}
+                    </h4>
+                    {session.subcategory && (
+                      <span
+                        style={{
+                          fontSize: 11,
+                          fontWeight: 700,
+                          color: accentColor,
+                          background: `${accentColor}1a`,
+                          border: `1px solid ${accentColor}40`,
+                          padding: "2px 8px",
+                          borderRadius: 999,
+                        }}
+                      >
+                        {session.subcategory}
+                      </span>
+                    )}
+                  </div>
                   <div style={{ display: "flex", gap: "12px", fontSize: "13px", color: "#94a3b8", flexWrap: "wrap" }}>
                     <span style={{ color: accentColor, fontWeight: "700" }}>⏱️ {formatMinutes(session.duration)} min</span>
                     <span>•</span>

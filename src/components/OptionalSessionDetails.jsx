@@ -1,6 +1,7 @@
 // src/components/OptionalSessionDetails.jsx
 import { useState, useEffect, useRef } from "react"
 import useDetailSuggestions from "../hooks/useDetailSuggestions"
+import useSubcategorySuggestions from "../hooks/useSubcategorySuggestions"
 
 export const DIFFICULTY_LEVELS = [
   { value: 1, emoji: "😌", label: "Very Easy" },
@@ -14,15 +15,16 @@ export function getDifficultyMeta(value) {
   return DIFFICULTY_LEVELS.find((l) => l.value === value) || null
 }
 
-function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty, category }) {
+// Shared chip-suggestion + autocomplete text field, used for both
+// Subcategory and Notes so the interaction only has to be built once.
+function SuggestibleTextField({ label, hint, placeholder, value, onChange, suggestions, exclude, filterSuggestions }) {
   const [showDropdown, setShowDropdown] = useState(false)
   const blurTimeout = useRef(null)
 
   useEffect(() => () => clearTimeout(blurTimeout.current), [])
 
-  const { suggestions, exclude, filterSuggestions } = useDetailSuggestions(category)
-  const typedMatches = filterSuggestions(suggestions, details)
-  const showAutocomplete = showDropdown && details.trim().length > 0 && typedMatches.length > 0
+  const typedMatches = filterSuggestions(suggestions, value)
+  const showAutocomplete = showDropdown && value.trim().length > 0 && typedMatches.length > 0
 
   const handleExclude = (e, text) => {
     e.stopPropagation()
@@ -30,6 +32,152 @@ function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty
       exclude(text)
     }
   }
+
+  return (
+    <div style={{ marginBottom: 14, position: "relative" }}>
+      <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 6 }}>
+        {label} {hint && <span style={{ opacity: 0.6 }}>{hint}</span>}
+      </label>
+
+      {suggestions.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
+          {suggestions.map((text) => (
+            <div
+              key={text}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "rgba(99,102,241,0.12)",
+                border: "1px solid rgba(99,102,241,0.25)",
+                borderRadius: 999,
+                padding: "4px 6px 4px 12px",
+              }}
+            >
+              <button
+                type="button"
+                onClick={() => onChange(text)}
+                title={text}
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#c7d2fe",
+                  fontSize: 12,
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  padding: 0,
+                  maxWidth: 160,
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                  whiteSpace: "nowrap",
+                }}
+              >
+                {text}
+              </button>
+              <button
+                type="button"
+                onClick={(e) => handleExclude(e, text)}
+                title="Stop suggesting this (e.g. fix a typo)"
+                style={{
+                  background: "none",
+                  border: "none",
+                  color: "#64748b",
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  padding: "0 2px",
+                  lineHeight: 1,
+                }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <input
+        type="text"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        onFocus={() => {
+          clearTimeout(blurTimeout.current)
+          setShowDropdown(true)
+        }}
+        onBlur={() => {
+          blurTimeout.current = setTimeout(() => setShowDropdown(false), 120)
+        }}
+        placeholder={placeholder}
+        style={{
+          width: "100%",
+          boxSizing: "border-box",
+          padding: "10px 12px",
+          fontSize: 14,
+          fontFamily: "inherit",
+          color: "#f8fafc",
+          background: "rgba(255,255,255,0.04)",
+          border: "1px solid rgba(255,255,255,0.1)",
+          borderRadius: 10,
+          outline: "none",
+        }}
+      />
+
+      {showAutocomplete && (
+        <div
+          style={{
+            position: "absolute",
+            left: 0,
+            right: 0,
+            top: "100%",
+            marginTop: 4,
+            background: "#1a103c",
+            border: "1px solid rgba(255,255,255,0.12)",
+            borderRadius: 10,
+            overflow: "hidden",
+            zIndex: 5,
+            boxShadow: "0 10px 25px -8px rgba(0,0,0,0.6)",
+          }}
+        >
+          {typedMatches.map((text) => (
+            <button
+              key={text}
+              type="button"
+              onClick={() => {
+                onChange(text)
+                setShowDropdown(false)
+              }}
+              style={{
+                display: "block",
+                width: "100%",
+                textAlign: "left",
+                padding: "9px 12px",
+                fontSize: 13,
+                color: "#e0e7ff",
+                background: "none",
+                border: "none",
+                cursor: "pointer",
+              }}
+            >
+              {text}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OptionalSessionDetails({
+  details,
+  setDetails,
+  subcategory,
+  setSubcategory,
+  difficulty,
+  setDifficulty,
+  category,
+}) {
+  const detailSuggestionsApi = useDetailSuggestions(category)
+  const subcategorySuggestionsApi = useSubcategorySuggestions(category)
 
   return (
     <div style={{ marginBottom: 18 }}>
@@ -50,136 +198,27 @@ function OptionalSessionDetails({ details, setDetails, difficulty, setDifficulty
           padding: 14,
         }}
       >
-        <div style={{ marginBottom: 14, position: "relative" }}>
-          <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 6 }}>
-            Notes <span style={{ opacity: 0.6 }}>(e.g. podcast or book title)</span>
-          </label>
+        <SuggestibleTextField
+          label="Subcategory"
+          hint="(e.g. podcast, movie, novel)"
+          placeholder="What type?"
+          value={subcategory}
+          onChange={setSubcategory}
+          suggestions={subcategorySuggestionsApi.suggestions}
+          exclude={subcategorySuggestionsApi.exclude}
+          filterSuggestions={subcategorySuggestionsApi.filterSuggestions}
+        />
 
-          {suggestions.length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 8 }}>
-              {suggestions.map((text) => (
-                <div
-                  key={text}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    background: "rgba(99,102,241,0.12)",
-                    border: "1px solid rgba(99,102,241,0.25)",
-                    borderRadius: 999,
-                    padding: "4px 6px 4px 12px",
-                  }}
-                >
-                  <button
-                    type="button"
-                    onClick={() => setDetails(text)}
-                    title={text}
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#c7d2fe",
-                      fontSize: 12,
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      padding: 0,
-                      maxWidth: 160,
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {text}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={(e) => handleExclude(e, text)}
-                    title="Stop suggesting this (e.g. fix a typo)"
-                    style={{
-                      background: "none",
-                      border: "none",
-                      color: "#64748b",
-                      fontSize: 13,
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      padding: "0 2px",
-                      lineHeight: 1,
-                    }}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <input
-            type="text"
-            value={details}
-            onChange={(e) => setDetails(e.target.value)}
-            onFocus={() => {
-              clearTimeout(blurTimeout.current)
-              setShowDropdown(true)
-            }}
-            onBlur={() => {
-              blurTimeout.current = setTimeout(() => setShowDropdown(false), 120)
-            }}
-            placeholder="What were you working on?"
-            style={{
-              width: "100%",
-              boxSizing: "border-box",
-              padding: "10px 12px",
-              fontSize: 14,
-              fontFamily: "inherit",
-              color: "#f8fafc",
-              background: "rgba(255,255,255,0.04)",
-              border: "1px solid rgba(255,255,255,0.1)",
-              borderRadius: 10,
-              outline: "none",
-            }}
-          />
-
-          {showAutocomplete && (
-            <div
-              style={{
-                position: "absolute",
-                left: 0,
-                right: 0,
-                top: "100%",
-                marginTop: 4,
-                background: "#1a103c",
-                border: "1px solid rgba(255,255,255,0.12)",
-                borderRadius: 10,
-                overflow: "hidden",
-                zIndex: 5,
-                boxShadow: "0 10px 25px -8px rgba(0,0,0,0.6)",
-              }}
-            >
-              {typedMatches.map((text) => (
-                <button
-                  key={text}
-                  type="button"
-                  onClick={() => {
-                    setDetails(text)
-                    setShowDropdown(false)
-                  }}
-                  style={{
-                    display: "block",
-                    width: "100%",
-                    textAlign: "left",
-                    padding: "9px 12px",
-                    fontSize: 13,
-                    color: "#e0e7ff",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                  }}
-                >
-                  {text}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
+        <SuggestibleTextField
+          label="Notes"
+          hint="(e.g. podcast or book title)"
+          placeholder="What were you working on?"
+          value={details}
+          onChange={setDetails}
+          suggestions={detailSuggestionsApi.suggestions}
+          exclude={detailSuggestionsApi.exclude}
+          filterSuggestions={detailSuggestionsApi.filterSuggestions}
+        />
 
         <div>
           <label style={{ display: "block", fontSize: 11, fontWeight: 700, color: "#94a3b8", marginBottom: 6 }}>

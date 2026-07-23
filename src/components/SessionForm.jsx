@@ -70,6 +70,7 @@ function SessionForm({ session, onSave, onCancel }) {
     session ? String(Math.round(session.duration / 60)) : ""
   )
   const [languageCode, setLanguageCode] = useState(session?.language || null)
+  const [subcategory, setSubcategory] = useState(session?.subcategory || "")
   const [details, setDetails] = useState(session?.details || "")
   const [difficulty, setDifficulty] = useState(session?.difficulty || null)
   const [error, setError] = useState("")
@@ -79,6 +80,7 @@ function SessionForm({ session, onSave, onCancel }) {
     setDateValue(toDatetimeLocalValue(session?.date))
     setMinutes(session ? String(Math.round(session.duration / 60)) : "")
     setLanguageCode(session?.language || null)
+    setSubcategory(session?.subcategory || "")
     setDetails(session?.details || "")
     setDifficulty(session?.difficulty || null)
     setError("")
@@ -101,6 +103,7 @@ function SessionForm({ session, onSave, onCancel }) {
       date: new Date(dateValue).toISOString(),
       duration: Math.round(parsedMinutes * 60),
       language: effectiveLanguageCode,
+      subcategory: subcategory.trim() || null,
       details: details.trim() || null,
       difficulty: difficulty || null,
     }
@@ -112,9 +115,9 @@ function SessionForm({ session, onSave, onCancel }) {
     }
   }
 
+  const categoryGlow = useFocusGlow()
   const dateGlow = useFocusGlow()
   const minutesGlow = useFocusGlow()
-  const categoryGlow = useFocusGlow()
 
   return (
     <form onSubmit={handleSubmit}>
@@ -184,6 +187,8 @@ function SessionForm({ session, onSave, onCancel }) {
       <OptionalSessionDetails
         details={details}
         setDetails={setDetails}
+        subcategory={subcategory}
+        setSubcategory={setSubcategory}
         difficulty={difficulty}
         setDifficulty={setDifficulty}
         category={category}

@@ -2,17 +2,17 @@
 // Derives "what did you call this before" suggestions purely from session
 // history — no predefined list, no separate content database.
 
-// Ranks distinct `details` values used within a category. Score blends
-// frequency with recency (exponential-ish decay by days ago) so something
-// logged often *and* recently outranks a one-off from months back.
-export function rankDetailSuggestions(sessions, category, excluded = [], limit = 8) {
+// Ranks distinct values of `field` used within a category. Score blends
+// frequency with recency so something logged often *and* recently outranks
+// a one-off from months back.
+export function rankFieldSuggestions(sessions, category, field, excluded = [], limit = 8) {
   const excludedSet = new Set(excluded.map((e) => e.trim().toLowerCase()))
   const now = Date.now()
   const scored = new Map() // normalized key -> { text, score, lastDate }
 
   sessions.forEach((s) => {
     if (s.category !== category) return
-    const raw = (s.details || "").trim()
+    const raw = (s[field] || "").trim()
     if (!raw) return
 
     const key = raw.toLowerCase()
@@ -38,6 +38,12 @@ export function rankDetailSuggestions(sessions, category, excluded = [], limit =
     .sort((a, b) => b.score - a.score)
     .slice(0, limit)
     .map(({ text }) => text)
+}
+
+// Back-compat wrapper — existing callers asking for `details` suggestions
+// don't need to change.
+export function rankDetailSuggestions(sessions, category, excluded = [], limit = 8) {
+  return rankFieldSuggestions(sessions, category, "details", excluded, limit)
 }
 
 // Filters an already-ranked suggestion list by what's currently typed,

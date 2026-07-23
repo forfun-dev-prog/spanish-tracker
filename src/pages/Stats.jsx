@@ -1,10 +1,19 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import useSessions from "../hooks/useSessions";
 import { computeStreaks } from "../utils/streaks";
 import { ACTIVITY_COLORS } from "../constants/activities";
 
 const CATEGORIES = Object.keys(ACTIVITY_COLORS);
 const WEEKDAYS = ["S", "M", "T", "W", "T", "F", "S"];
+const ALL_TREND_COLOR = "#818cf8";
+
+// Scales smoothly between the mobile-safe size we verified (10px cells,
+// 3px gaps) and a roomier desktop size, based on viewport width — no JS
+// measurement needed. At the max end (16px cells, 5px cell gap, 20px month
+// gap), three months still comfortably fit within the 600px card.
+const HABIT_CELL_SIZE = "clamp(10px, 2.2vw, 16px)";
+const HABIT_CELL_GAP = "clamp(3px, 0.5vw, 5px)";
+const HABIT_MONTH_GAP = "clamp(8px, 1.5vw, 20px)";
 
 const SCOPES = [
   { id: "week", label: "Week" },
@@ -19,6 +28,8 @@ const CHART_TYPES = [
 ];
 
 const cardStyle = {
+  width: "100%",
+  boxSizing: "border-box",
   background: "rgba(15, 10, 30, 0.6)",
   border: "1px solid rgba(255, 255, 255, 0.05)",
   borderRadius: 20,
@@ -107,19 +118,33 @@ function StatCard({ label, value, sub }) {
   );
 }
 
-function TrendLine({ buckets, maxBucketTotal }) {
-  const W = 600;
+function TrendLine({ buckets, getValue, maxValue, color }) {
+  const wrapperRef = useRef(null);
+  const [width, setWidth] = useState(560);
+
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver((entries) => {
+      const measured = entries[0]?.contentRect?.width;
+      if (measured && measured > 0) setWidth(measured);
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
+
   const H = 180;
   const padX = 8;
   const padY = 16;
   const n = buckets.length;
-  const innerW = W - padX * 2;
+  const innerW = Math.max(width - padX * 2, 1);
   const innerH = H - padY * 2;
 
   const pts = buckets.map((b, i) => {
+    const val = getValue(b);
     const x = padX + (n <= 1 ? innerW / 2 : (i / (n - 1)) * innerW);
-    const y = padY + innerH - (maxBucketTotal ? (b.total / maxBucketTotal) * innerH : 0);
-    return { x, y, b };
+    const y = padY + innerH - (maxValue ? (val / maxValue) * innerH : 0);
+    return { x, y, b, val };
   });
 
   const line = pts.map((p, i) => `${i === 0 ? "M" : "L"}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(" ");
@@ -128,27 +153,51 @@ function TrendLine({ buckets, maxBucketTotal }) {
   const colW = n ? innerW / n : innerW;
 
   return (
-    <svg viewBox={`0 0 ${W} ${H}`} width="100%" height={H} preserveAspectRatio="none" style={{ display: "block" }}>
-      <defs>
-        <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#818cf8" stopOpacity="0.35" />
-          <stop offset="100%" stopColor="#818cf8" stopOpacity="0" />
-        </linearGradient>
-      </defs>
+    <div ref={wrapperRef} style={{ width: "100%", boxSizing: "border-box" }}>
+      <svg
+        viewBox={`0 0 ${width} ${H}`}
+        width={width}
+        height={H}
+        style={{ display: "block", maxWidth: "100%" }}
+      >
+        <defs>
+          <linearGradient id="trendFill" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.35" />
+            <stop offset="100%" stopColor={color} stopOpacity="0" />
+          </linearGradient>
+        </defs>
 
-      {[0.25, 0.5, 0.75, 1].map((t, i) => (
-        <line key={i} x1={padX} x2={W - padX} y1={padY + innerH * (1 - t)} y2={padY + innerH * (1 - t)} stroke="rgba(255,255,255,0.06)" />
-      ))}
+        {[0.25, 0.5, 0.75, 1].map((t, i) => (
+          <line
+            key={i}
+            x1={padX}
+            x2={width - padX}
+            y1={padY + innerH * (1 - t)}
+            y2={padY + innerH * (1 - t)}
+            stroke="rgba(255,255,255,0.06)"
+          />
+        ))}
 
-      {area && <path d={area} fill="url(#trendFill)" />}
-      {n >= 2 && <path d={line} fill="none" stroke="#818cf8" strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" strokeLinecap="round" />}
+        {area && <path d={area} fill="url(#trendFill)" />}
+        {n >= 2 && (
+          <path
+            d={line}
+            fill="none"
+            stroke={color}
+            strokeWidth="2"
+            vectorEffect="non-scaling-stroke"
+            strokeLinejoin="round"
+            strokeLinecap="round"
+          />
+        )}
 
-      {pts.map((p, i) => (
-        <rect key={i} x={padX + i * colW} y={0} width={colW} height={H} fill="transparent">
-          <title>{`${p.b.label}: ${fmtHours(p.b.total)}h`}</title>
-        </rect>
-      ))}
-    </svg>
+        {pts.map((p, i) => (
+          <rect key={i} x={padX + i * colW} y={0} width={colW} height={H} fill="transparent">
+            <title>{`${p.b.label}: ${fmtHours(p.val)}h`}</title>
+          </rect>
+        ))}
+      </svg>
+    </div>
   );
 }
 
@@ -156,6 +205,8 @@ function Stats() {
   const { sessions } = useSessions();
   const [scope, setScope] = useState("30days");
   const [chartType, setChartType] = useState("bar");
+  const [expandedCategory, setExpandedCategory] = useState(null);
+  const [trendCategory, setTrendCategory] = useState("all");
 
   const sessionsDateSet = useMemo(() => {
     const set = new Set();
@@ -215,6 +266,7 @@ function Stats() {
     const bucketMap = new Map(buckets.map((b) => [b.key, b]));
 
     const categoryMinutes = Object.fromEntries(CATEGORIES.map((c) => [c, 0]));
+    const subcategoryMinutes = {};
     const dailyMinutes = new Map();
     let totalMinutes = 0;
 
@@ -226,6 +278,10 @@ function Stats() {
       const minutes = s.duration / 60;
       categoryMinutes[s.category] += minutes;
       totalMinutes += minutes;
+
+      const subLabel = (s.subcategory && s.subcategory.trim()) || "Unspecified";
+      if (!subcategoryMinutes[s.category]) subcategoryMinutes[s.category] = {};
+      subcategoryMinutes[s.category][subLabel] = (subcategoryMinutes[s.category][subLabel] || 0) + minutes;
 
       const dayKey = startOfDay(d).toDateString();
       dailyMinutes.set(dayKey, (dailyMinutes.get(dayKey) || 0) + minutes);
@@ -261,6 +317,7 @@ function Stats() {
       buckets,
       maxBucketTotal,
       categoryMinutes,
+      subcategoryMinutes,
       categoryBreakdown,
       totalMinutes,
       avgMinutes,
@@ -332,8 +389,39 @@ function Stats() {
   const granularityLabel =
     analytics.granularity === "day" ? "daily" : analytics.granularity === "week" ? "weekly" : "monthly";
 
+  const categoriesInChart = CATEGORIES.filter((cat) => buckets.some((b) => b.breakdown[cat] > 0));
+
+  const activeTrendCategory =
+    trendCategory === "all" || categoriesInChart.includes(trendCategory) ? trendCategory : "all";
+
+  const trendColor = activeTrendCategory === "all" ? ALL_TREND_COLOR : ACTIVITY_COLORS[activeTrendCategory];
+  const trendGetValue = (b) => (activeTrendCategory === "all" ? b.total : b.breakdown[activeTrendCategory] || 0);
+  const trendMaxValue = Math.max(...buckets.map(trendGetValue), 1);
+
+  const getSubBreakdown = (category) => {
+    const map = analytics.subcategoryMinutes[category] || {};
+    const catTotal = analytics.categoryMinutes[category] || 0;
+    return Object.entries(map)
+      .map(([name, minutes]) => ({ name, minutes, pct: catTotal ? (minutes / catTotal) * 100 : 0 }))
+      .sort((a, b) => b.minutes - a.minutes);
+  };
+
+  const trendPillStyle = (active, color) => ({
+    display: "flex",
+    alignItems: "center",
+    gap: 6,
+    padding: "6px 12px",
+    fontSize: 12,
+    fontWeight: 700,
+    borderRadius: 999,
+    cursor: "pointer",
+    background: active ? `${color}26` : "rgba(255,255,255,0.04)",
+    border: active ? `1px solid ${color}` : "1px solid rgba(255,255,255,0.08)",
+    color: active ? "#f8fafc" : "#94a3b8",
+  });
+
   return (
-    <div style={{ maxWidth: "600px", margin: "40px auto", padding: "32px 24px", background: "#0f0a1e", color: "#f8fafc", borderRadius: "28px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)" }}>
+    <div style={{ maxWidth: "600px", width: "100%", boxSizing: "border-box", margin: "40px auto", padding: "32px 24px", background: "#0f0a1e", color: "#f8fafc", borderRadius: "28px", boxShadow: "0 25px 50px -12px rgba(0,0,0,0.8)" }}>
 
       <div style={{ textAlign: "center", marginBottom: "24px" }}>
         <h1 style={{ fontSize: "32px", fontWeight: "900", margin: "0" }}>📊 Stats Overview</h1>
@@ -357,24 +445,68 @@ function Stats() {
 
       <div style={cardStyle}>
         <h3 style={cardTitleStyle}>Time by Category</h3>
+        <p style={{ textAlign: "center", fontSize: 11, color: "#64748b", margin: "-12px 0 16px 0" }}>
+          Tap a category to see its subcategory breakdown
+        </p>
         {categoryBreakdown.length === 0 ? (
           <p style={{ textAlign: "center", color: "#64748b", fontSize: 13, margin: 0 }}>No sessions in this period.</p>
         ) : (
-          <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-            {categoryBreakdown.map((c) => (
-              <div key={c.category}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                  <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600 }}>
-                    <span style={{ width: 11, height: 11, borderRadius: 3, background: ACTIVITY_COLORS[c.category], display: "inline-block" }} />
-                    {c.category}
-                  </span>
-                  <span style={{ fontSize: 13, color: "#cbd5e1" }}>{fmtHours(c.minutes)}h · {c.pct.toFixed(0)}%</span>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {categoryBreakdown.map((c) => {
+              const isOpen = expandedCategory === c.category;
+              const subBreakdown = isOpen ? getSubBreakdown(c.category) : [];
+              return (
+                <div key={c.category}>
+                  <button
+                    type="button"
+                    onClick={() => setExpandedCategory(isOpen ? null : c.category)}
+                    style={{
+                      display: "block",
+                      width: "100%",
+                      background: "none",
+                      border: "none",
+                      padding: "6px 0",
+                      cursor: "pointer",
+                      textAlign: "left",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <span style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, fontWeight: 600, color: "#f8fafc" }}>
+                        <span style={{ width: 11, height: 11, borderRadius: 3, background: ACTIVITY_COLORS[c.category], display: "inline-block", flexShrink: 0 }} />
+                        {c.category}
+                        <span style={{ fontSize: 10, color: "#64748b" }}>{isOpen ? "▲" : "▾"}</span>
+                      </span>
+                      <span style={{ fontSize: 13, color: "#cbd5e1" }}>{fmtHours(c.minutes)}h · {c.pct.toFixed(0)}%</span>
+                    </div>
+                    <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                      <div style={{ height: "100%", width: `${c.pct}%`, background: ACTIVITY_COLORS[c.category], borderRadius: 3 }} />
+                    </div>
+                  </button>
+
+                  {isOpen && (
+                    <div style={{ paddingLeft: 19, paddingTop: 8, paddingBottom: 4, display: "flex", flexDirection: "column", gap: 8 }}>
+                      {subBreakdown.length === 0 ? (
+                        <p style={{ fontSize: 11, color: "#64748b", margin: 0 }}>
+                          No subcategories logged yet for {c.category}.
+                        </p>
+                      ) : (
+                        subBreakdown.map((sub) => (
+                          <div key={sub.name}>
+                            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, color: "#cbd5e1", marginBottom: 3 }}>
+                              <span>{sub.name}</span>
+                              <span>{fmtHours(sub.minutes)}h · {sub.pct.toFixed(0)}%</span>
+                            </div>
+                            <div style={{ height: 4, borderRadius: 2, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
+                              <div style={{ height: "100%", width: `${sub.pct}%`, background: ACTIVITY_COLORS[c.category], opacity: 0.6, borderRadius: 2 }} />
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  )}
                 </div>
-                <div style={{ height: 6, borderRadius: 3, background: "rgba(255,255,255,0.05)", overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${c.pct}%`, background: ACTIVITY_COLORS[c.category], borderRadius: 3 }} />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>
@@ -395,19 +527,15 @@ function Stats() {
         </svg>
       </div>
 
-      {/* Habit Grid — sized to keep all 3 months side-by-side down to ~360px
-          viewports: 10px cells, 3px cell gaps, 8px gap between months, and
-          reduced left/right padding on this card only (top/bottom unchanged
-          to match the other cards' vertical rhythm). */}
-      <div style={{ ...cardStyle, padding: "24px 12px" }}>
+      <div style={cardStyle}>
         <h3 style={cardTitleStyle}>Habit Activity (3 Months)</h3>
-        <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap" }}>
+        <div style={{ display: "flex", gap: HABIT_MONTH_GAP, justifyContent: "center", flexWrap: "wrap" }}>
           {monthBlocks.map((block) => (
             <div key={block.key}>
               <div style={{ textAlign: "center", fontSize: 11, fontWeight: 800, color: "#a5b4fc", letterSpacing: "1px", marginBottom: 8 }}>
                 {block.label}
               </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 10px)", gap: 3 }}>
+              <div style={{ display: "grid", gridTemplateColumns: `repeat(7, ${HABIT_CELL_SIZE})`, gap: HABIT_CELL_GAP }}>
                 {WEEKDAYS.map((wd, i) => (
                   <div key={`wd-${i}`} style={{ fontSize: 7, color: "#64748b", textAlign: "center", fontWeight: 700 }}>
                     {wd}
@@ -421,8 +549,8 @@ function Stats() {
                       key={cell.dateKey}
                       title={`${cell.label}: ${cell.isActive ? "Completed" : cell.isFuture ? "Upcoming" : "No sessions"}`}
                       style={{
-                        width: 10,
-                        height: 10,
+                        width: HABIT_CELL_SIZE,
+                        height: HABIT_CELL_SIZE,
                         boxSizing: "border-box",
                         borderRadius: 2,
                         background: cell.isActive
@@ -442,13 +570,43 @@ function Stats() {
         </div>
       </div>
 
-      <div style={{ ...cardStyle, marginBottom: 0 }}>
+      <div style={{ ...cardStyle, marginBottom: 0, overflow: "hidden" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 16, flexWrap: "wrap", gap: 10 }}>
           <h3 style={{ margin: 0, fontSize: 18, color: "#ffffff" }}>
             Activity Trend <span style={{ fontSize: 12, fontWeight: 600, color: "#64748b" }}>({granularityLabel})</span>
           </h3>
           <Segmented options={CHART_TYPES} value={chartType} onChange={setChartType} />
         </div>
+
+        {chartType === "bar" && categoriesInChart.length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: "8px 14px", marginBottom: 14 }}>
+            {categoriesInChart.map((cat) => (
+              <span key={cat} style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "#cbd5e1", fontWeight: 600 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 2, background: ACTIVITY_COLORS[cat], display: "inline-block", flexShrink: 0 }} />
+                {cat}
+              </span>
+            ))}
+          </div>
+        )}
+
+        {chartType === "line" && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 16 }}>
+            <button type="button" onClick={() => setTrendCategory("all")} style={trendPillStyle(activeTrendCategory === "all", ALL_TREND_COLOR)}>
+              All
+            </button>
+            {categoriesInChart.map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setTrendCategory(cat)}
+                style={trendPillStyle(activeTrendCategory === cat, ACTIVITY_COLORS[cat])}
+              >
+                <span style={{ width: 8, height: 8, borderRadius: 2, background: ACTIVITY_COLORS[cat], display: "inline-block", flexShrink: 0 }} />
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
 
         {chartType === "bar" ? (
           <div style={{ display: "flex", alignItems: "flex-end", height: 180, gap: buckets.length > 40 ? 2 : 5, borderBottom: "1px solid rgba(255,255,255,0.1)", paddingBottom: 4 }}>
@@ -474,7 +632,7 @@ function Stats() {
             ))}
           </div>
         ) : (
-          <TrendLine buckets={buckets} maxBucketTotal={maxBucketTotal} />
+          <TrendLine buckets={buckets} getValue={trendGetValue} maxValue={trendMaxValue} color={trendColor} />
         )}
 
         {buckets.length > 0 && (

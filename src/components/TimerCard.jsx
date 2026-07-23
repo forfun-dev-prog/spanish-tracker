@@ -8,6 +8,7 @@ function TimerCard({ category, onSaveSession }) {
   const { seconds, running, start, stop, reset } = useTimer()
   const { currentLanguage } = useLanguage()
 
+  const [subcategory, setSubcategory] = useState("")
   const [details, setDetails] = useState("")
   const [difficulty, setDifficulty] = useState(null)
 
@@ -15,6 +16,12 @@ function TimerCard({ category, onSaveSession }) {
     const mins = Math.floor(totalSeconds / 60)
     const secs = totalSeconds % 60
     return `${String(mins).padStart(2, "0")}:${String(secs).padStart(2, "0")}`
+  }
+
+  const resetOptionalFields = () => {
+    setSubcategory("")
+    setDetails("")
+    setDifficulty(null)
   }
 
   const handleStopAndSave = async () => {
@@ -27,14 +34,14 @@ function TimerCard({ category, onSaveSession }) {
         date: new Date().toISOString(),
         duration: seconds,
         language: currentLanguage.code,
+        subcategory: subcategory.trim() || null,
         details: details.trim() || null,
         difficulty: difficulty || null,
       })
     }
 
     reset()
-    setDetails("")
-    setDifficulty(null)
+    resetOptionalFields()
   }
 
   return (
@@ -77,6 +84,8 @@ function TimerCard({ category, onSaveSession }) {
         <OptionalSessionDetails
           details={details}
           setDetails={setDetails}
+          subcategory={subcategory}
+          setSubcategory={setSubcategory}
           difficulty={difficulty}
           setDifficulty={setDifficulty}
           category={category}
@@ -150,8 +159,7 @@ function TimerCard({ category, onSaveSession }) {
         <button
           onClick={() => {
             reset()
-            setDetails("")
-            setDifficulty(null)
+            resetOptionalFields()
           }}
           disabled={seconds === 0 && !running}
           style={{

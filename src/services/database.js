@@ -3,9 +3,6 @@ import { supabase } from "./supabaseClient"
 
 // --- Sessions ---
 export async function fetchSessions() {
-  // Newest first — a behavior change from the old Dexie version (which had
-  // no explicit order and happened to come back oldest-first via
-  // auto-increment id). Flagging since History's list order flips as a result.
   const { data, error } = await supabase.from("sessions").select("*").order("date", { ascending: false })
   if (error) {
     console.error("Error fetching sessions:", error)
@@ -79,6 +76,24 @@ export async function excludeSuggestion(userId, category, detailText) {
   set.add(normalized)
   map[category] = Array.from(set)
   await setMetadata(userId, "suggestionExclusions", map)
+}
+
+// --- Subcategory Suggestion Exclusions ---
+// Kept as a separate metadata key from the details exclusions above, since
+// hiding a mistyped subcategory ("Podcst") shouldn't have anything to do
+// with hiding a mistyped note.
+export async function getSubcategoryExclusions(userId, category) {
+  const map = (await getMetadata(userId, "subcategorySuggestionExclusions")) || {}
+  return map[category] || []
+}
+
+export async function excludeSubcategorySuggestion(userId, category, text) {
+  const map = (await getMetadata(userId, "subcategorySuggestionExclusions")) || {}
+  const normalized = text.trim().toLowerCase()
+  const set = new Set(map[category] || [])
+  set.add(normalized)
+  map[category] = Array.from(set)
+  await setMetadata(userId, "subcategorySuggestionExclusions", map)
 }
 
 // --- Language Selection ---
